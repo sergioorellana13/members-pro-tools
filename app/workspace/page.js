@@ -1555,7 +1555,7 @@ const saveManualStats = async () => {
                 <h3 style={addSaleTitle}>Add Sale</h3>
 
                 <div style={bubbleGrid}>
-                  <SaleInput label="liner" value={newSaleForm.liner} onChange={(v) => updateNewSaleForm('', v)} />
+                  <SaleInput label="liner" value={newSaleForm.liner} onChange={(v) => updateNewSaleForm('liner', v)} />
                   <SaleInput label="Closer" value={newSaleForm.closer} onChange={(v) => updateNewSaleForm('closer', v)} />
                   <SaleInput label="Triple" value={newSaleForm.triple} onChange={(v) => updateNewSaleForm('triple', v)} />
                   <SaleInput label="Purchase Price" value={newSaleForm.purchase_price} onChange={(v) => updateNewSaleForm('purchase_price', v)} />
