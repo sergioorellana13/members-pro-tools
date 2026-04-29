@@ -1806,7 +1806,14 @@ function StaticField({ label, value }) {
 }
 
 const page = { minHeight: '100vh', background: '#ffffff', padding: 40, fontFamily: 'Helvetica Neue, Arial, sans-serif' }
-const topBrand = { maxWidth: 1250, margin: '0 auto 28px', display: 'flex', alignItems: 'center', gap: 24 }
+const topBrand = {
+  maxWidth: 1250,
+  margin: '0 auto 28px',
+  display: 'flex',
+  alignItems: 'center',
+  gap: 24,
+  flexWrap: 'wrap'
+}
 const logo = { width: 170, objectFit: 'contain' }
 const brandTitle = { margin: 0, color: '#111827', textTransform: 'uppercase', letterSpacing: 1.5, fontSize: 30 }
 const brandSub = { color: '#6b7280', margin: '6px 0 0' }
@@ -1814,12 +1821,18 @@ const yearStatsBox = { marginLeft: 'auto', background: '#0f172a', color: '#f9faf
 const yearStat = { textAlign: 'right' }
 const yearStatLabel = { fontSize: 10, color: '#9ca3af', textTransform: 'uppercase', letterSpacing: 1, marginBottom: 5 }
 const yearStatValue = { fontSize: 18, fontWeight: 'bold' }
-const shell = { maxWidth: 1250, margin: '0 auto', background: '#0f172a', borderRadius: 28, padding: 34, border: '1px solid #1e293b', boxShadow: '0 24px 70px rgba(15,23,42,0.25)', color: '#f9fafb' }
+const shell = { maxWidth: 1250, margin: '0 auto', background: '#0f172a', borderRadius: 28, padding: 'clamp(18px, 4vw, 34px)', border: '1px solid #1e293b', boxShadow: '0 24px 70px rgba(15,23,42,0.25)', color: '#f9fafb' }
 const header = { display: 'flex', justifyContent: 'space-between', gap: 20, flexWrap: 'wrap', marginBottom: 24 }
 const sectionTitle = { margin: 0, textTransform: 'uppercase', letterSpacing: 1.4, color: '#f9fafb' }
 const goldLine = { width: 64, height: 3, background: '#c9a86a', margin: '12px 0' }
 const muted = { color: '#9ca3af', margin: 0 }
-const topActions = { display: 'flex', gap: 10, flexWrap: 'wrap', alignItems: 'center' }
+const topActions = {
+  display: 'flex',
+  gap: 10,
+  flexWrap: 'wrap',
+  alignItems: 'center',
+  justifyContent: 'flex-end'
+}
 const select = { padding: '12px 14px', background: '#111827', color: '#f9fafb', border: '1px solid #374151', borderRadius: 12, outline: 'none', fontWeight: 'bold' }
 const metricBar = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14, background: '#111827', border: '1px solid #1f2937', borderRadius: 18, padding: 14, marginBottom: 22 }
 const metricBox = { textAlign: 'right' }
@@ -1827,10 +1840,25 @@ const metricLabel = { color: '#9ca3af', fontSize: 11, textTransform: 'uppercase'
 const metricValueGreen = { color: '#22c55e', fontSize: 22, fontWeight: 'bold' }
 const metricValueYellow = { color: '#facc15', fontSize: 22, fontWeight: 'bold' }
 const metricValueGold = { color: '#c9a86a', fontSize: 22, fontWeight: 'bold' }
-const calendar = { display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: 10 }
+const calendar = {
+  display: 'grid',
+  gridTemplateColumns: 'repeat(7, minmax(105px, 1fr))',
+  gap: 10,
+  overflowX: 'auto',
+  paddingBottom: 10
+}
 const dayHeader = { textAlign: 'center', color: '#c9a86a', fontWeight: 'bold', textTransform: 'uppercase', letterSpacing: 1, padding: 10 }
 const emptyCell = { minHeight: 120 }
-const cell = { background: '#111827', border: '1px solid #1f2937', borderRadius: 16, minHeight: 135, padding: 10, overflow: 'hidden', cursor: 'pointer' }
+const cell = {
+  background: '#111827',
+  border: '1px solid #1f2937',
+  borderRadius: 16,
+  minHeight: 135,
+  minWidth: 105,
+  padding: 10,
+  overflow: 'hidden',
+  cursor: 'pointer'
+}
 const fullDownDay = { border: '2px solid #22c55e', boxShadow: '0 0 0 1px rgba(34,197,94,0.25), 0 12px 30px rgba(34,197,94,0.12)' }
 const penderDay = { border: '2px solid #facc15', boxShadow: '0 0 0 1px rgba(250,204,21,0.25), 0 12px 30px rgba(250,204,21,0.1)' }
 const dayNumber = { color: '#f9fafb', fontWeight: 'bold', marginBottom: 8 }
