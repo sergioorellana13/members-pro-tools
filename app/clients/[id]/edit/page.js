@@ -296,6 +296,12 @@ export default function EditClientPage({ params }) {
                 />
 
                 <Field
+                  label="Total Years"
+                  value={contract.contract_years}
+                  onChange={(v) => updateContract(index, 'contract_years', v)}
+                />
+
+                <Field
                   label="Purchase Date"
                   type="date"
                   value={contract.purchase_date || ''}

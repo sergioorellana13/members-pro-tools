@@ -153,6 +153,13 @@ export default function ClientPage({ params }) {
 
               <button
                 style={goldButton}
+                onClick={() => window.location.href = `/clients/${clientId}/edit`}
+              >
+                Edit Client
+              </button>
+
+              <button
+                style={goldButton}
                 onClick={() => setShowLoanModal(true)}
               >
                 Loan Management
@@ -212,6 +219,7 @@ export default function ClientPage({ params }) {
               <div style={grid}>
                 <Metric label="Total Points Purchased" value={numberFormat(totalPointsPurchased)} />
                 <Metric label="Remaining Points" value={numberFormat(remainingPoints)} />
+                <Metric label="Investment to date" value={money(totalPaid)} />
                 <Metric label="Current Maintenance Fee" value={money(maintenanceFee)} />
                 <Metric label="Promissory Note Balance" value={money(promissoryNoteBalance)} />
                 <Metric label="Original Price Per Point" value={money(originalPricePerPoint)} />

@@ -111,6 +111,7 @@ export default function NewClientPage() {
       contract_label: index + 1,
       contract_number: contract.contract_number.trim(),
       annual_points: Number(contract.annual_points || 0),
+      contract_years: Number(contract.contract_years || 0),
       purchase_date: contract.purchase_date || null,
       expiration_date: contract.expiration_date || null,
       last_payment_date: contract.last_payment_date || null,
@@ -251,6 +252,11 @@ export default function NewClientPage() {
                 label="Annual Points"
                 value={contract.annual_points}
                 onChange={(v) => updateContract(index, 'annual_points', v)}
+              />
+              <Field
+                label="Total Years"
+                value={contract.contract_years}
+                onChange={(v) => updateContract(index, 'contract_years', v)}
               />
 
               <Field
