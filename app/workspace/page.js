@@ -14,11 +14,11 @@ export default function WorkspacePage() {
   const [contracts, setContracts] = useState([])
   const [allContracts, setAllContracts] = useState([])
   const [loading, setLoading] = useState(false)
+  const [statAdjustments, setStatAdjustments] = useState([])
 
   const [selectedSale, setSelectedSale] = useState(null)
   const [selectedTour, setSelectedTour] = useState(null)
   const [selectedDay, setSelectedDay] = useState(null)
-
   const [saleDraft, setSaleDraft] = useState(null)
   const [editMode, setEditMode] = useState(false)
 
@@ -30,19 +30,21 @@ export default function WorkspacePage() {
   const [showAddNote, setShowAddNote] = useState(false)
   const [noteTarget, setNoteTarget] = useState(null)
   const [noteInput, setNoteInput] = useState('')
-// 🔥 MANUAL STATS (CORPORATE OVERRIDE)
-const [showStatsModal, setShowStatsModal] = useState(false)
-const [manualStats, setManualStats] = useState({
-  qs: '',
-  sales: '',
-  current_volume: ''
-})
 
-const [tourRoleForm, setTourRoleForm] = useState({
-  q_liner: '',
-  q_closer: '',
-  q_triple: ''
-})
+  const [showStatsModal, setShowStatsModal] = useState(false)
+  const [manualStats, setManualStats] = useState({
+    qs: '',
+    sales: '',
+    current_fulldown_volume: '',
+    current_pender_volume: '',
+  })
+
+  const [tourRoleForm, setTourRoleForm] = useState({
+    q_liner: '',
+    q_closer: '',
+    q_triple: ''
+  })
+
   const emptySaleForm = {
     liner: '',
     closer: '',
@@ -76,12 +78,14 @@ const [tourRoleForm, setTourRoleForm] = useState({
   }
 
   const formatMoney = (value) =>
-    '$' + Number(value || 0).toLocaleString('en-US', {
+    '$' +
+    Number(value || 0).toLocaleString('en-US', {
       maximumFractionDigits: 0
     })
 
   const formatMoneyDetailed = (value) =>
-    '$' + Number(value || 0).toLocaleString('en-US', {
+    '$' +
+    Number(value || 0).toLocaleString('en-US', {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2
     })
@@ -111,19 +115,6 @@ const [tourRoleForm, setTourRoleForm] = useState({
   }
 
   const getAssignedVolume = (sale) => {
-    // 🔥 NUEVA LÓGICA DE Qs
-const getAssignedQCredit = (sale) => {
-  if (profile?.role === 'manager') return 1
-
-  const hasCloser = sale.closer && sale.closer.trim() !== ''
-  const hasTriple = sale.triple && sale.triple.trim() !== ''
-
-  if (!hasCloser && !hasTriple) return 0.7
-  if (hasCloser && !hasTriple) return 0.4
-  if (hasCloser && hasTriple) return 0.2
-
-  return 0
-}
     const net = getNetVolume(sale)
 
     if (profile?.role === 'manager') {
@@ -195,6 +186,21 @@ const getAssignedQCredit = (sale) => {
 
     setSales(salesData || [])
 
+    const { data: adjustmentsData, error: adjustmentsError } = await supabase
+      .from('stat_adjustments')
+      .select('*')
+     // .eq('user_id', currentUser.id)
+      .gte('created_at', fiscal.start.toISOString())
+      .lte('created_at', fiscal.end.toISOString())
+
+    if (adjustmentsError) {
+      alert('Error loading stat adjustments: ' + adjustmentsError.message)
+      setLoading(false)
+      return
+    }
+
+    setStatAdjustments(adjustmentsData || [])
+
     const { data: contractsData, error: contractsError } = await supabase
       .from('contracts')
       .select('*, clients(full_name)')
@@ -215,6 +221,7 @@ const getAssignedQCredit = (sale) => {
       .select('*, clients(full_name)')
 
     setAllContracts(allContractsData || [])
+
     setLoading(false)
   }
 
@@ -225,7 +232,6 @@ const getAssignedQCredit = (sale) => {
   const firstDay = new Date(year, month, 1).getDay()
   const daysInMonth = new Date(year, month + 1, 0).getDate()
   const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat']
-
   const fiscal = getSalesYearRange()
 
   const isSameMonth = (date) =>
@@ -247,11 +253,6 @@ const getAssignedQCredit = (sale) => {
     .filter((sale) => sale.pender)
     .reduce((sum, sale) => sum + getAssignedVolume(sale), 0)
 
-  const monthlyTotalAssignedVolume =
-  monthlyFullDownVolume +
-  monthlyPenderVolume +
-  Number(manualStats.volume || 0)
-
   const monthlyTourClientIds = [
     ...new Set(
       contracts
@@ -260,18 +261,20 @@ const getAssignedQCredit = (sale) => {
     )
   ]
 
-  const monthlyTourCount = contracts
-  .filter((c) => !c.hidden_from_calendar && isQTour(c))
-  .reduce((sum, c) => sum + getAssignedQCredit(c), 0)
+  const monthlyTourCount = monthlyTourClientIds.length
 
+  const monthlySaleCount =
+    [
+      ...new Set(
+        monthlySales
+          .filter((sale) => sale.full_down || sale.pender)
+          .map((sale) => sale.client_id)
+      )
+    ].length
 
-  const monthlySaleCount = [
-    ...new Set(
-      monthlySales
-        .filter((sale) => sale.full_down || sale.pender)
-        .map((sale) => sale.client_id)
-    )
-  ].length + Number(manualStats.sales || 0)
+  const monthlyTotalAssignedVolume =
+    monthlyFullDownVolume + monthlyPenderVolume
+
   const monthlyClosingPercentage =
     monthlyTourCount > 0 ? (monthlySaleCount / monthlyTourCount) * 100 : 0
 
@@ -286,7 +289,29 @@ const getAssignedQCredit = (sale) => {
     .filter((sale) => sale.pender)
     .reduce((sum, sale) => sum + getAssignedVolume(sale), 0)
 
-  const yearTotalVolume = yearFullDownVolume + yearPenderVolume
+  const manualYearQs = statAdjustments.reduce(
+    (sum, item) => sum + Number(item.qs || 0),
+    0
+  )
+
+  const manualYearSales = statAdjustments.reduce(
+    (sum, item) => sum + Number(item.sales || 0),
+    0
+  )
+
+  const manualYearFullDownVolume = statAdjustments.reduce(
+  (sum, item) => sum + Number(item.current_fulldown_volume || 0),
+  0
+)
+
+const manualYearPenderVolume = statAdjustments.reduce(
+  (sum, item) => sum + Number(item.current_pender_volume || 0),
+  0
+)
+
+  const yearFullDownTotal = yearFullDownVolume + manualYearFullDownVolume
+const yearPenderTotal = yearPenderVolume + manualYearPenderVolume
+const yearTotalVolume = yearFullDownTotal + yearPenderTotal
 
   const yearTourClientIds = [
     ...new Set(
@@ -312,11 +337,16 @@ const getAssignedQCredit = (sale) => {
     )
   ].length
 
+  const adjustedYearTourCount = yearTourCount + manualYearQs
+  const adjustedYearSaleCount = yearSaleCount + manualYearSales
+
   const yearClosingPercentage =
-    yearTourCount > 0 ? (yearSaleCount / yearTourCount) * 100 : 0
+    adjustedYearTourCount > 0
+      ? (adjustedYearSaleCount / adjustedYearTourCount) * 100
+      : 0
 
   const yearEfficiency =
-    yearTourCount > 0 ? yearTotalVolume / yearTourCount : 0
+    adjustedYearTourCount > 0 ? yearTotalVolume / adjustedYearTourCount : 0
 
   const getAllContractsForClient = (clientId) => {
     return allContracts
@@ -557,7 +587,13 @@ return finalItems
     setSaleDraft(null)
     setEditMode(false)
     setShowAddSale(false)
-    setNewSaleForm(emptySaleForm)
+    const currentAnnualPoints =
+  allContracts.find((contract) => contract.client_id === tour.client_id && String(contract.contract_number || '').startsWith('35-'))?.annual_points || ''
+
+setNewSaleForm({
+  ...emptySaleForm,
+  old_annual_points: String(currentAnnualPoints)
+})
   }
 
   const closeBubble = () => {
@@ -850,41 +886,49 @@ if (insertedSale?.id) {
     closeBubble()
   }
 
-  const cancelSale = async () => {
-  if (!selectedSale) return
+  const cancelSale = async (saleParam = null) => {
+  const saleToCancel = saleParam || selectedSale
 
-  const confirmCancel = confirm(
-    'Cancel this sale? This will remove the sale and restore the previous contract points/tour status when available.'
-  )
+  if (!saleToCancel?.id) {
+    alert('No sale selected to cancel.')
+    return
+  }
 
-  if (!confirmCancel) return
+  const confirmDelete = confirm('Cancel this sale?')
+  if (!confirmDelete) return
 
-  if (selectedSale.upgraded_contract_id) {
-    if (Number(selectedSale.previous_annual_points || 0) > 0) {
-      await supabase
-        .from('contracts')
-        .update({
-          annual_points: Number(selectedSale.previous_annual_points || 0),
-          tour_type: selectedSale.previous_tour_type || 'Ct'
-        })
-        .eq('id', selectedSale.upgraded_contract_id)
-    } else {
-      await supabase
-        .from('contracts')
-        .delete()
-        .eq('id', selectedSale.upgraded_contract_id)
+  if (saleToCancel.upgraded_contract_id) {
+    const { error: contractError } = await supabase
+      .from('contracts')
+      .update({
+        annual_points: saleToCancel.previous_annual_points || 0,
+        tour_type: saleToCancel.previous_tour_type || 'Ct'
+      })
+      .eq('id', saleToCancel.upgraded_contract_id)
+
+    if (contractError) {
+      alert('Error restoring contract: ' + contractError.message)
+      return
     }
   }
 
-  const { error } = await supabase
+  const { data: deletedSale, error: deleteError } = await supabase
     .from('sales')
     .delete()
-    .eq('id', selectedSale.id)
+    .eq('id', saleToCancel.id)
+    .select()
 
-  if (error) {
-    alert('Error canceling sale: ' + error.message)
+  if (deleteError) {
+    alert('Error canceling sale: ' + deleteError.message)
     return
   }
+
+  if (!deletedSale || deletedSale.length === 0) {
+    alert('Sale was not deleted. Check permissions or sale id.')
+    return
+  }
+
+  alert('Sale cancelled and contract restored.')
 
   await loadWorkspace()
   closeBubble()
@@ -1026,19 +1070,30 @@ function getAssignedQCredit(contract) {
     alert('Note saved')
   }
 const saveManualStats = async () => {
-  if (!user) {
-    alert('No user found.')
-    return
-  }
+  const { data: { user: currentUser } } = await supabase.auth.getUser()
 
-  const { error } = await supabase
-    .from('stat_adjustments')
-    .insert({
-      user_id: user.id,
-      qs: Number(manualStats.qs || 0),
-      sales: Number(manualStats.sales || 0),
-      current_volume: Number(manualStats.current_volume || 0)
-    })
+if (!currentUser) {
+  alert('No user session')
+  return
+}
+
+const { data: insertedStats, error } = await supabase
+  .from('stat_adjustments')
+  .insert({
+  user_id: currentUser.id,
+  qs: Number(manualStats.qs || 0),
+  sales: Number(manualStats.sales || 0),
+  current_fulldown_volume: Number(manualStats.current_fulldown_volume || 0),
+  current_pender_volume: Number(manualStats.current_pender_volume || 0)
+})
+  .select()
+
+if (error) {
+  alert('Error saving stats: ' + error.message)
+  return
+}
+
+alert('Inserted stats:')
 
   if (error) {
     alert('Error saving stats: ' + error.message)
@@ -1050,7 +1105,8 @@ const saveManualStats = async () => {
   setManualStats({
     qs: '',
     sales: '',
-    current_volume: ''
+    current_fulldown_volume: '',
+    current_pender_volume: ''
   })
 
   setShowStatsModal(false)
@@ -1068,8 +1124,8 @@ const saveManualStats = async () => {
         </div>
 
         <div style={yearStatsBox}>
-          <YearStat label="Year Full Down" value={formatMoney(yearFullDownVolume)} color="#22c55e" />
-          <YearStat label="Year Pender" value={formatMoney(yearPenderVolume)} color="#facc15" />
+          <YearStat label="Year Full Down" value={formatMoney(yearFullDownTotal)} color="#22c55e" />
+          <YearStat label="Year Pender" value={formatMoney(yearPenderTotal)} color="#facc15" />
           <YearStat label="Year Closing %" value={`${yearClosingPercentage.toFixed(1)}%`} color="#c9a86a" />
           <YearStat label="Year Efficiency" value={formatMoney(yearEfficiency)} color="#c9a86a" />
         </div>
@@ -1473,9 +1529,9 @@ const saveManualStats = async () => {
                 Add Note
               </button>
 
-              <button onClick={cancelSale} style={redButton}>
-                Cancel Sale
-              </button>
+              <button onClick={() => cancelSale(selectedSale)} style={redButton}>
+  Cancel Sale
+</button>
 
               {!editMode && (
                 <button onClick={() => setEditMode(true)} style={blueButton}>
@@ -1562,7 +1618,7 @@ const saveManualStats = async () => {
                   <SaleInput label="Closing Cost" value={newSaleForm.closing_cost} onChange={(v) => updateNewSaleForm('closing_cost', v)} />
                   <StaticField label="Gross Volume" value={formatMoneyDetailed(getGrossVolumeFromForm(newSaleForm))} />
                   <StaticField label="Net Volume" value={formatMoneyDetailed(getNetVolumeFromForm(newSaleForm))} />
-                  <SaleInput label="Old Annual Points" value={newSaleForm.old_annual_points} onChange={(v) => updateNewSaleForm('old_annual_points', v)} />
+                  <SaleInput label="Previous annual points" value={newSaleForm.old_annual_points} onChange={(v) => updateNewSaleForm('old_annual_points', v)} />
                   <SaleInput label="New Annual Points" value={newSaleForm.new_annual_points} onChange={(v) => updateNewSaleForm('new_annual_points', v)} />
                   <SaleInput label="New Points Sold" value={newSaleForm.new_points_sold} onChange={(v) => updateNewSaleForm('new_points_sold', v)} />
                   <SaleInput label="Years" value={newSaleForm.years} onChange={(v) => updateNewSaleForm('years', v)} />
@@ -1707,7 +1763,7 @@ const saveManualStats = async () => {
           </div>
         </div>
       )}
-      {showStatsModal && (
+     {showStatsModal && (
   <div style={overlay}>
     <div style={noteBubbleModal}>
       <h2 style={bubbleTitle}>Manual Stats Override</h2>
@@ -1726,10 +1782,20 @@ const saveManualStats = async () => {
         />
 
         <SaleInput
-          label="Current Volume (USD)"
-          value={manualStats.volume}
-          onChange={(v) => setManualStats({ ...manualStats, volume: v })}
-        />
+  label="Current Full Down Volume (USD)"
+  value={manualStats.current_fulldown_volume}
+  onChange={(v) =>
+    setManualStats({ ...manualStats, current_fulldown_volume: v })
+  }
+/>
+
+<SaleInput
+  label="Current Pender Volume (USD)"
+  value={manualStats.current_pender_volume}
+  onChange={(v) =>
+    setManualStats({ ...manualStats, current_pender_volume: v })
+  }
+/>
       </div>
 
       <div style={bubbleActions}>
@@ -1741,7 +1807,7 @@ const saveManualStats = async () => {
         </button>
 
         <button
-          onClick={() => setShowStatsModal(false)}
+          onClick={saveManualStats}
           style={goldButton}
         >
           Apply
@@ -1750,7 +1816,7 @@ const saveManualStats = async () => {
     </div>
   </div>
 )}
-    </div>
+</div>
   )
 }
 

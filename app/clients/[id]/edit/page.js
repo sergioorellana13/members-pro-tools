@@ -70,9 +70,9 @@ export default function EditClientPage({ params }) {
         contract_number: '',
         annual_points: '',
         purchase_date: '',
-        contract_years: '',
         pending_balance: '',
         interest_rate: '',
+        last_payment_date: '',
         current_monthly_payment: '',
         annual_maintenance_increase: '',
         years_remaining: '',
@@ -113,6 +113,8 @@ export default function EditClientPage({ params }) {
         beneficiaries: Number(client.beneficiaries || 0),
         prior_presentations: Number(client.prior_presentations || 0),
         next_tier: Number(client.next_tier || 0),
+        price_per_point_increase: Number(client.price_per_point_increase || 0),
+        benefits_to_add: client.benefits_to_add || '',
         certificate_date: client.certificate_date || null
       })
       .eq('id', clientId)
@@ -130,9 +132,9 @@ export default function EditClientPage({ params }) {
         contract_number: c.contract_number || '',
         annual_points: Number(c.annual_points || 0),
         purchase_date: c.purchase_date || null,
-        contract_years: Number(c.contract_years || 0),
         pending_balance: Number(c.pending_balance || 0),
         interest_rate: Number(c.interest_rate || 0),
+        last_payment_date: c.last_payment_date || null,
         current_monthly_payment: Number(c.current_monthly_payment || 0),
         annual_maintenance_increase: Number(c.annual_maintenance_increase || 0),
         years_remaining: Number(c.years_remaining || 0),
@@ -228,6 +230,18 @@ export default function EditClientPage({ params }) {
           />
 
           <Field
+            label="Price Per Point Increase"
+            value={client.price_per_point_increase}
+            onChange={(v) => updateClient('price_per_point_increase', v)}
+          />
+
+          <Field
+            label="Benefits To Add"
+            value={client.benefits_to_add}
+            onChange={(v) => updateClient('benefits_to_add', v)}
+          />
+
+          <Field
             label="Next Tier"
             value={client.next_tier}
             onChange={(v) => updateClient('next_tier', v)}
@@ -289,12 +303,6 @@ export default function EditClientPage({ params }) {
                 />
 
                 <Field
-                  label="Contract Years"
-                  value={contract.contract_years}
-                  onChange={(v) => updateContract(index, 'contract_years', v)}
-                />
-
-                <Field
                   label="Pending Balance"
                   value={contract.pending_balance}
                   onChange={(v) => updateContract(index, 'pending_balance', v)}
@@ -304,6 +312,13 @@ export default function EditClientPage({ params }) {
                   label="Interest Rate %"
                   value={contract.interest_rate}
                   onChange={(v) => updateContract(index, 'interest_rate', v)}
+                />
+
+                <Field
+                  label="Last Payment"
+                  type="date"
+                  value={contract.last_payment_date || ''}
+                  onChange={(v) => updateContract(index, 'last_payment_date', v)}
                 />
 
                 <Field

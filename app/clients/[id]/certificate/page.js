@@ -16,9 +16,7 @@ export default function CertificatePage({ params }) {
   }, [])
 
   const generateFolio = () => {
-    const year = new Date().getFullYear()
-    const random = Math.floor(100000 + Math.random() * 900000)
-    return `VPG-${year}-${random}`
+    return 'COV-92663-11AR'
   }
 
   const loadClient = async () => {
@@ -57,11 +55,9 @@ export default function CertificatePage({ params }) {
     setClient(updatedClient)
 
     const qrData = [
-      'Villa Group Access Certificate',
-      `Folio: ${folio}`,
-      `Client: ${data.full_name}`,
-      `Certificate Points: ${data.next_tier}`,
-      `Certificate Date: ${data.certificate_date || 'Pending Date'}`
+      'Redeem Code: COV-92663-11AR',
+      'Activation Code: Y3sD0i7T',
+      'Contract passcode: 777GoD8Jfs'
     ].join('\n')
 
     const qr = await QRCode.toDataURL(qrData, {
@@ -101,6 +97,8 @@ export default function CertificatePage({ params }) {
   }
 
   const newMaintenance = (Number(client?.next_tier) || 0) * 0.525
+
+  const pricePerPointIncrease = Number(client?.price_per_point_increase || 0)
 
   const generatePDF = async () => {
     const html2pdf = (await import('html2pdf.js')).default
@@ -278,9 +276,9 @@ export default function CertificatePage({ params }) {
               To execute this certificate, all members must be present at the time
               of registration and must be exercised in an official Villa Group
               salesfloor. If members decide not to execute this certificate once
-              expired the current price per point will go back to its regular price
-              plus .23 cts. If this certificate is accepted and executed by the
-              members, a printed copy must be added on file along with the new
+              expired the current purchase benefit will go back to its regular price
+              per point plus {pricePerPointIncrease} cts. If this certificate is accepted and executed by
+              the members, a printed copy must be added on file along with the new
               worksheet.
             </p>
           </div>
@@ -341,35 +339,61 @@ export default function CertificatePage({ params }) {
                 <strong>New Maintenance Fee:</strong><br />
                 {money(newMaintenance)}
               </div>
+
               <div>
                 <strong>Included Rights:</strong><br />
-                Right to use · Real Estate Equity · Acceleration without future adjustments
+                {client?.benefits_to_add ? (
+                  <ul style={{ marginTop: 6, paddingLeft: 18 }}>
+                    {client.benefits_to_add.split(',').map((benefit, index) => (
+                      <li key={index}>{benefit.trim()}</li>
+                    ))}
+                  </ul>
+                ) : (
+                  <span>
+                    Right to use • Real Estate Equity • Acceleration without future adjustments
+                  </span>
+                )}
               </div>
             </div>
           </div>
 
-          {/* VERIFICATION + SIGNATURE */}
+          {/* SIGNATURE + SEAL + QR */}
           <div
             style={{
+              marginTop: 5,
               display: 'grid',
-              gridTemplateColumns: '1.3fr 0.7fr',
-              gap: 18,
-              alignItems: 'end'
+              gridTemplateColumns: '1fr auto',
+              alignItems: 'end',
+              gap: 18
             }}
           >
             <div>
-              <p style={{ marginBottom: 38 }}>Signed by:</p>
+              <p style={{ marginBottom: 5 }}>Signed by:</p>
 
-              <div
-                style={{
-                  borderTop: '1px solid #111827',
-                  width: 260,
-                  paddingTop: 9,
-                  fontSize: 14
-                }}
-              >
-                <strong>Raul Ernesto Ferrera G.</strong><br />
-                Club Manager
+              <div style={{ textAlign: 'center', width: 210 }}>
+                <img
+                  src="/signature-raul-pro.png"
+                  alt="Signature Raul Ernesto Ferrara G."
+                  style={{
+                    width: 155,
+                    marginBottom: 2
+                  }}
+                />
+
+                <div
+                  style={{
+                    borderTop: '1px solid #111827',
+                    width: 220,
+                    margin: '0 auto',
+                    marginBottom: 6
+                  }}
+                />
+
+                <div style={{ fontSize: 12 }}>
+                  <strong>Raul Ernesto Ferrara G.</strong>
+                  <br />
+                  Club Manager
+                </div>
               </div>
             </div>
 
@@ -427,23 +451,23 @@ export default function CertificatePage({ params }) {
               )}
             </div>
           </div>
+        </div>
 
-          {/* FOOTER */}
-          <div
-            style={{
-              position: 'absolute',
-              left: 0,
-              right: 0,
-              bottom: -20,
-              textAlign: 'center',
-              fontFamily: 'Helvetica Neue, Arial, sans-serif',
-              fontSize: 8.5,
-              color: '#9ca3af',
-              letterSpacing: 1
-            }}
-          >
-            Internal membership certificate · Printed copy must be added on file with the new worksheet
-          </div>
+        {/* FOOTER */}
+        <div
+          style={{
+            position: 'absolute',
+            left: 0,
+            right: 0,
+            bottom: -20,
+            textAlign: 'center',
+            fontFamily: 'Helvetica Neue, Arial, sans-serif',
+            fontSize: 8.5,
+            color: '#9ca3af',
+            letterSpacing: 1
+          }}
+        >
+          Internal membership certificate · Printed copy must be added on file with the new worksheet
         </div>
       </div>
 

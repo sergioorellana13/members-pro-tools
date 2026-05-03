@@ -9,6 +9,7 @@ export default function ClientPage({ params }) {
 
   const [client, setClient] = useState(null)
   const [contracts, setContracts] = useState([])
+  const [showLoanModal, setShowLoanModal] = useState(false)
 
   useEffect(() => {
     getData()
@@ -70,6 +71,42 @@ export default function ClientPage({ params }) {
     return total
   }
 
+  const calculateRemainingMonths = (lastPaymentDate) => {
+    if (!lastPaymentDate) return 0
+
+    const today = new Date()
+    const start = new Date(today.getFullYear(), today.getMonth() + 1, 1)
+    const end = new Date(lastPaymentDate)
+
+    if (end < start) return 0
+
+    const months =
+      (end.getFullYear() - start.getFullYear()) * 12 +
+      (end.getMonth() - start.getMonth()) +
+      1
+
+    return Math.max(months, 0)
+  }
+
+  const calculateEstimatedInterest = (pendingBalance, interestRate, monthlyPayment, remainingMonths) => {
+    let balance = Number(pendingBalance) || 0
+    const monthlyRate = (Number(interestRate) || 0) / 100 / 12
+    const payment = Number(monthlyPayment) || 0
+    let totalInterest = 0
+
+    if (balance <= 0 || monthlyRate <= 0 || remainingMonths <= 0) return 0
+
+    for (let i = 0; i < remainingMonths; i++) {
+      const interest = balance * monthlyRate
+      totalInterest += interest
+      balance = balance + interest - payment
+
+      if (balance <= 0) break
+    }
+
+    return totalInterest
+  }
+
   const totalAnnualPoints = contracts.reduce(
     (sum, c) => sum + (Number(c.annual_points) || 0),
     0
@@ -115,6 +152,13 @@ export default function ClientPage({ params }) {
               </button>
 
               <button
+                style={goldButton}
+                onClick={() => setShowLoanModal(true)}
+              >
+                Loan Management
+              </button>
+
+              <button
                 style={darkButton}
                 onClick={() => window.location.href = '/dashboard'}
               >
@@ -146,7 +190,8 @@ export default function ClientPage({ params }) {
             totalPointsPurchased > 0 ? totalPaid / totalPointsPurchased : 0
 
           const currentPricePerPoint =
-            originalPricePerPoint + 0.23 * priorPresentations
+            originalPricePerPoint +
+            Number(client?.price_per_point_increase || 0) * priorPresentations
 
           return (
             <div key={c.id} style={contractCard}>
@@ -195,6 +240,69 @@ export default function ClientPage({ params }) {
           Review Official Projection
         </button>
       </div>
+
+      {showLoanModal && (
+        <div style={overlay}>
+          <div style={loanModal}>
+            <button
+              style={xButton}
+              onClick={() => setShowLoanModal(false)}
+            >
+              ×
+            </button>
+
+            <h2 style={modalTitle}>Loan Management</h2>
+            <div style={goldLine} />
+
+            {contracts.length === 0 && (
+              <div style={emptyBox}>No contracts found for this client.</div>
+            )}
+
+            {contracts.map((c) => {
+              const pending = Number(c.pending_balance || 0)
+              const rate = Number(c.interest_rate || 0)
+              const monthly = Number(c.current_monthly_payment || 0)
+              const remainingMonths = calculateRemainingMonths(c.last_payment_date)
+              const estimatedInterest = calculateEstimatedInterest(
+                pending,
+                rate,
+                monthly,
+                remainingMonths
+              )
+
+              return (
+                <div key={c.id} style={loanCard}>
+                  <h3 style={contractTitle}>Contract #{c.contract_number}</h3>
+
+                  <div style={grid}>
+                    <Metric
+                      label="Pending Balance"
+                      value={pending <= 0 ? 'Paid in Full' : money(pending)}
+                    />
+                    <Metric
+                      label="Interest Rate"
+                      value={`${rate}%`}
+                    />
+                    <Metric
+                      label="Remaining Months"
+                      value={remainingMonths}
+                    />
+                    <Metric
+                      label="Current Monthly Payment"
+                      value={money(monthly)}
+                    />
+                  </div>
+
+                  <div style={interestBox}>
+                    <div style={metricLabel}>Estimated Interest Over Remaining Term</div>
+                    <div style={interestValue}>{money(estimatedInterest)}</div>
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -397,6 +505,16 @@ const blueButton = {
   fontWeight: 'bold'
 }
 
+const goldButton = {
+  padding: '12px 16px',
+  background: '#c9a86a',
+  color: '#111827',
+  border: 'none',
+  borderRadius: 10,
+  cursor: 'pointer',
+  fontWeight: 'bold'
+}
+
 const projectionButton = {
   width: '100%',
   padding: 16,
@@ -407,5 +525,70 @@ const projectionButton = {
   border: 'none',
   borderRadius: 12,
   cursor: 'pointer',
+  fontWeight: 'bold'
+}
+
+const overlay = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.72)',
+  display: 'flex',
+  justifyContent: 'center',
+  alignItems: 'center',
+  zIndex: 9999,
+  padding: 20
+}
+
+const loanModal = {
+  width: 'min(900px, 96vw)',
+  maxHeight: '90vh',
+  overflowY: 'auto',
+  background: '#0f172a',
+  border: '1px solid #c9a86a',
+  borderRadius: 24,
+  padding: 28,
+  position: 'relative',
+  boxShadow: '0 30px 90px rgba(0,0,0,0.55)'
+}
+
+const xButton = {
+  position: 'absolute',
+  top: 16,
+  right: 18,
+  background: 'transparent',
+  border: 'none',
+  color: '#ffffff',
+  fontSize: 34,
+  cursor: 'pointer',
+  lineHeight: 1
+}
+
+const modalTitle = {
+  margin: 0,
+  color: '#f9fafb',
+  textTransform: 'uppercase',
+  letterSpacing: 1.4,
+  fontSize: 26
+}
+
+const loanCard = {
+  background: '#111827',
+  border: '1px solid #1f2937',
+  borderRadius: 18,
+  padding: 22,
+  marginTop: 22
+}
+
+const interestBox = {
+  marginTop: 16,
+  padding: 18,
+  background: 'linear-gradient(135deg, #1f2937, #111827)',
+  border: '1px solid #c9a86a',
+  borderRadius: 14
+}
+
+const interestValue = {
+  color: '#c9a86a',
+  fontSize: 24,
   fontWeight: 'bold'
 }

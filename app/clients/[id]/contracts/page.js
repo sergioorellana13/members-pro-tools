@@ -90,7 +90,9 @@ export default function ContractsPage({ params }) {
         annual_points: Number(contract.annual_points || 0),
         purchase_date: contract.purchase_date || null,
         expiration_date: contract.expiration_date || null,
-        contract_years: Number(contract.contract_years || 0),
+        price_per_point_increase: Number(contract.price_per_point_increase || 0),
+        benefits_to_add: contract.benefits_to_add || '',
+        last_payment_date: contract.last_payment_date || null,
         pending_balance: Number(contract.pending_balance || 0),
         interest_rate: Number(contract.interest_rate || 0),
         current_monthly_payment: Number(contract.current_monthly_payment || 0),
@@ -188,10 +190,16 @@ export default function ContractsPage({ params }) {
               />
 
               <Field
-                label="Contract Years"
-                value={contract.contract_years}
-                onChange={(v) => updateContract(index, 'contract_years', v)}
-              />
+  label="Price Per Point Increase"
+  value={contract.price_per_point_increase}
+  onChange={(v) => updateContract(index, 'price_per_point_increase', v)}
+/>
+
+<Field
+  label="Benefits To Add"
+  value={contract.benefits_to_add}
+  onChange={(v) => updateContract(index, 'benefits_to_add', v)}
+/>
 
               <Field
                 label="Pending Balance"
@@ -204,6 +212,13 @@ export default function ContractsPage({ params }) {
                 value={contract.interest_rate}
                 onChange={(v) => updateContract(index, 'interest_rate', v)}
               />
+
+<Field
+  label="Last Payment"
+  type="date"
+  value={contract.last_payment_date}
+  onChange={(v) => updateContract(index, 'last_payment_date', v)}
+/>
 
               <Field
                 label="Current Monthly Payment"
@@ -256,7 +271,9 @@ function createEmptyContract(label) {
     annual_points: '',
     purchase_date: '',
     expiration_date: '',
-    contract_years: '',
+    price_per_point_increase: '',
+    benefits_to_add: '',
+    last_payment_date: '',
     pending_balance: '',
     interest_rate: '',
     current_monthly_payment: '',

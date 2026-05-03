@@ -190,23 +190,47 @@ setSaleForm(updated)
     }
   }
 
-  const updateContractAfterSale = async () => {
-    const newPointsSold = Number(saleForm.new_points_sold || 0)
-    const years = Number(saleForm.years || 0)
+  const updateContractAfterSale = async (sale) => {
 
-    if (newPointsSold <= 0 || years <= 0) return
+  // 1. Obtener contrato actual
+  const { data: contracts } = await supabase
+    .from('contracts')
+    .select('*')
+    .eq('client_id', clientId)
+    const contract = contracts?.[0]
 
-    const { purchaseDate, expirationDate } = addYearsToToday(years)
+  if (!contract) return null
 
-    const { data: contracts, error } = await supabase
-      .from('contracts')
-      .select('*')
-      .eq('client_id', clientId)
+  const previousPoints = contract.annual_points
+  const previousType = contract.tour_type
 
-    if (error) {
-      alert('Sale saved, but contract update failed: ' + error.message)
-      return
-    }
+  const newPoints = Number(sale.new_annual_points || 0)
+
+  // 2. Actualizar contrato a Q
+  await supabase
+    .from('contracts')
+    .update({
+      annual_points: newPoints,
+      tour_type: 'Q'
+    })
+    .eq('id', contract.id)
+
+  // 3. Guardar rollback en la venta
+  await supabase
+    .from('sales')
+    .update({
+      previous_annual_points: previousPoints,
+      previous_tour_type: previousType,
+      upgraded_contract_id: contract.id,
+      points_added: newPoints - previousPoints
+    })
+    .eq('id', sale.id)
+
+  return {
+    contractId: contract.id,
+    previousPoints,
+    previousType
+  }
 
     const contract35 = (contracts || []).find((contract) =>
       String(contract.contract_number || '').startsWith('35-')
@@ -327,7 +351,7 @@ setSaleForm(updated)
       return
     }
 
-    const rollback = await updateContractAfterSale()
+    const rollback = await updateContractAfterSale(insertedSale)
 
 if (insertedSale?.id) {
   await supabase
@@ -395,9 +419,34 @@ if (insertedSale?.id) {
               Pending Certificate
             </button>
 
-            <button onClick={() => setShowSaleModal(true)} style={executeButton}>
-              Execute
-            </button>
+            <button
+  onClick={async () => {
+    const { data, error } = await supabase
+      .from('contracts')
+      .select('annual_points')
+      .eq('client_id', clientId)
+      .like('contract_number', '35-%')
+      .limit(1)
+      .single()
+
+    if (error) {
+      alert('Could not load current annual points: ' + error.message)
+      return
+    }
+
+    const points = Number(data?.annual_points || 0)
+
+    setSaleForm({
+      ...saleForm,
+      old_annual_points: String(points)
+    })
+
+    setShowSaleModal(true)
+  }}
+  style={executeButton}
+>
+  Execute
+</button>
 
             <button
               onClick={() => window.location.href = `/clients/${clientId}`}
@@ -487,7 +536,24 @@ if (insertedSale?.id) {
               <ReadOnlyBox label="Sales Gross Volume" value={formatMoney(getGrossVolume())} />
               <ReadOnlyBox label="Net Volume" value={formatMoney(getNetVolume())} />
 
-              <SaleField label="Old Annual Points" value={saleForm.old_annual_points} onChange={(v) => updateSaleForm('old_annual_points', v)} />
+              <div>
+  <label style={modalLabel}>Previous Annual Points</label>
+  <input
+    type="text"
+    value={
+      typeof saleForm.old_annual_points === 'object'
+        ? ''
+        : saleForm.old_annual_points || ''
+    }
+    onChange={(e) =>
+      setSaleForm({
+        ...saleForm,
+        old_annual_points: e.target.value
+      })
+    }
+    style={modalInput}
+  />
+</div>
               <SaleField label="New Annual Points" value={saleForm.new_annual_points} onChange={(v) => updateSaleForm('new_annual_points', v)} />
 
               <SaleField label="New Points Sold" value={saleForm.new_points_sold} onChange={(v) => updateSaleForm('new_points_sold', v)} />
@@ -587,7 +653,7 @@ function SaleField({ label, value, onChange, type = 'text' }) {
       <label style={modalLabel}>{label}</label>
       <input
         type={type}
-        value={value}
+        value={typeof value === 'object' ? '' : value || ''}
         onChange={(e) => onChange(e.target.value)}
         style={modalInput}
       />
@@ -629,16 +695,60 @@ const goldButton = { padding: '12px 16px', background: '#c9a86a', color: '#11182
 const greenButton = { padding: '12px 16px', background: '#16a34a', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 'bold' }
 const executeButton = greenButton
 const pendingButton = { padding: '12px 16px', background: '#ef4444', color: 'white', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 'bold', animation: 'blink 1s infinite' }
-const overlay = { position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.72)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 20, zIndex: 9999 }
-const modal = { width: '100%', maxWidth: 880, maxHeight: '90vh', overflowY: 'auto', background: '#0f172a', border: '1px solid #1f2937', borderRadius: 24, padding: 28, color: 'white', boxShadow: '0 24px 80px rgba(0,0,0,0.55)' }
+const overlay = {
+  position: 'fixed',
+  inset: 0,
+  background: 'rgba(0,0,0,0.7)',
+  display: 'flex',
+  alignItems: 'center',
+  justifyContent: 'center',
+  padding: 10,
+  zIndex: 9999
+}
+
+const modal = {
+  width: '100%',
+  maxWidth: 500,
+  maxHeight: '90vh',
+  overflowY: 'auto',
+  background: '#0f172a',
+  border: '1px solid #1f2937',
+  borderRadius: 16,
+  padding: 16,
+  margin: '0 auto',
+  boxShadow: '0 10px 40px rgba(0,0,0,0.6)'
+}
 const modalHeader = { display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 22 }
 const modalTitle = { margin: 0, textTransform: 'uppercase', letterSpacing: 1.4 }
 const modalSub = { color: '#9ca3af', margin: 0 }
 const xButton = { background: 'transparent', color: 'white', border: 'none', fontSize: 30, cursor: 'pointer' }
-const modalGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }
+const modalGrid = {
+  display: 'grid',
+  gridTemplateColumns: '1fr',
+  gap: 14
+}
 const modalLabel = { display: 'block', color: '#c9a86a', fontSize: 12, textTransform: 'uppercase', letterSpacing: 1, marginBottom: 7, fontWeight: 'bold' }
-const modalInput = { width: '100%', boxSizing: 'border-box', padding: 13, borderRadius: 10, border: '1px solid #374151', background: '#111827', color: '#f9fafb', outline: 'none' }
+const modalInput = {
+  width: '100%',
+  boxSizing: 'border-box',
+  padding: 16,
+  borderRadius: 12,
+  border: '1px solid #374151',
+  fontSize: 16,
+  background: '#111827',
+  color: 'white'
+}
 const readOnlyBox = { width: '100%', boxSizing: 'border-box', padding: 13, borderRadius: 10, border: '1px solid #374151', background: '#1f2937', color: '#c9a86a', fontWeight: 'bold' }
 const checkRow = { display: 'flex', gap: 22, marginTop: 20, background: '#111827', border: '1px solid #1f2937', borderRadius: 14, padding: 14 }
 const checkLabel = { display: 'flex', alignItems: 'center', gap: 8, fontWeight: 'bold' }
-const modalActions = { display: 'flex', justifyContent: 'flex-end', gap: 12, marginTop: 24 }
+const modalActions = {
+  position: 'sticky',
+  bottom: 0,
+  background: '#0f172a',
+  padding: '12px',
+  display: 'flex',
+  justifyContent: 'flex-end',
+  gap: 12,
+  borderTop: '1px solid #1f2937',
+  marginTop: 20
+}

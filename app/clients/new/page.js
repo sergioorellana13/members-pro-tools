@@ -84,6 +84,8 @@ export default function NewClientPage() {
         beneficiaries: Number(client.beneficiaries || 0),
         prior_presentations: Number(client.prior_presentations || 0),
         next_tier: Number(client.next_tier || 0),
+        price_per_point_increase: Number(client.price_per_point_increase || 0),
+        benefits_to_add: client.benefits_to_add || '',
         certificate_date: client.certificate_date || null,
         seller_id: userData.user.id
       })
@@ -111,7 +113,7 @@ export default function NewClientPage() {
       annual_points: Number(contract.annual_points || 0),
       purchase_date: contract.purchase_date || null,
       expiration_date: contract.expiration_date || null,
-      contract_years: Number(contract.contract_years || 0),
+      last_payment_date: contract.last_payment_date || null,
       pending_balance: Number(contract.pending_balance || 0),
       interest_rate: Number(contract.interest_rate || 0),
       current_monthly_payment: Number(contract.current_monthly_payment || 0),
@@ -190,6 +192,17 @@ export default function NewClientPage() {
             onChange={(v) => updateClient('next_tier', v)}
             placeholder="Example: 10000"
           />
+          <Field
+            label="Price Per Point Increase"
+            value={client.price_per_point_increase}
+            onChange={(v) => setClient({...client, price_per_point_increase: v})}
+          />
+
+          <Field
+            label="Benefits To Add"
+            value={client.benefits_to_add}
+            onChange={(v) => setClient({...client, benefits_to_add: v})}
+          />
 
           <Field
             label="Certificate Date"
@@ -259,11 +272,6 @@ export default function NewClientPage() {
                 value={contract.years_remaining}
               />
 
-              <Field
-                label="Contract Years"
-                value={contract.contract_years}
-                onChange={(v) => updateContract(index, 'contract_years', v)}
-              />
 
               <Field
                 label="Pending Balance"
@@ -276,6 +284,13 @@ export default function NewClientPage() {
                 value={contract.interest_rate}
                 onChange={(v) => updateContract(index, 'interest_rate', v)}
               />
+
+<Field
+  label="Last Payment"
+  type="date"
+  value={contract.last_payment_date}
+  onChange={(v) => updateContract(index, 'last_payment_date', v)}
+/>
 
               <Field
                 label="Current Monthly Payment"
@@ -326,7 +341,7 @@ function createEmptyContract(label) {
     annual_points: '',
     purchase_date: '',
     expiration_date: '',
-    contract_years: '',
+    last_payment_date: '',
     pending_balance: '',
     interest_rate: '',
     current_monthly_payment: '',
