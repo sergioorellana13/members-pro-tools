@@ -10,6 +10,10 @@ export default function ProjectionPage({ params }) {
   const [client, setClient] = useState(null)
   const [contracts, setContracts] = useState([])
 
+  const [showSearchModal, setShowSearchModal] = useState(false)
+  const [searchAnnualPoints, setSearchAnnualPoints] = useState('')
+  const [showComparison, setShowComparison] = useState(false)
+
   useEffect(() => {
     getData()
   }, [])
@@ -48,13 +52,24 @@ export default function ProjectionPage({ params }) {
       maximumFractionDigits: 2
     })
 
-  const numberFormat = (v) =>
-    Number(v || 0).toLocaleString('en-US')
+  const numberFormat = (v) => Number(v || 0).toLocaleString('en-US')
 
   const currentMonthYear = new Date().toLocaleString('en-US', {
     month: 'long',
     year: 'numeric'
   })
+
+  const getLevelByPoints = (points) => {
+    const p = Number(points || 0)
+
+    if (p >= 25000) return 'Luxxe'
+    if (p >= 15000) return 'Residence Level'
+    if (p >= 10000) return 'Five Star Elite'
+    if (p >= 5000) return 'Four Star Elite'
+    if (p > 0) return 'Below Four Star Elite'
+
+    return 'Enter Annual Points'
+  }
 
   const generateProjection = (contract) => {
     const years = Number(contract.years_remaining) || 0
@@ -65,6 +80,20 @@ export default function ProjectionPage({ params }) {
 
     for (let i = 0; i < years; i++) {
       const year = new Date().getFullYear() + i
+      const value = base * Math.pow(1 + increase / 100, i)
+      rows.push({ year, value })
+    }
+
+    return rows
+  }
+
+  const generateComparisonProjection = () => {
+    const base = Number(searchAnnualPoints || 0) * 0.525
+    const increase = 1.2
+    let rows = []
+
+    for (let i = 0; i < 8; i++) {
+      const year = 2019 + i
       const value = base * Math.pow(1 + increase / 100, i)
       rows.push({ year, value })
     }
@@ -89,6 +118,20 @@ export default function ProjectionPage({ params }) {
     const projection = generateProjection(contract)
     return sum + projection.reduce((s, r) => s + r.value, 0)
   }, 0)
+
+  const comparisonProjection = generateComparisonProjection()
+  const comparisonColumns = buildColumns(comparisonProjection)
+  const comparisonTotal = comparisonProjection.reduce((sum, r) => sum + r.value, 0)
+
+  const runSearchByLevel = () => {
+    if (!searchAnnualPoints || Number(searchAnnualPoints) <= 0) {
+      alert('Enter Annual Points.')
+      return
+    }
+
+    setShowComparison(true)
+    setShowSearchModal(false)
+  }
 
   const generatePDF = async () => {
     const html2pdf = (await import('html2pdf.js')).default
@@ -178,7 +221,7 @@ export default function ProjectionPage({ params }) {
             lineHeight: 1.45
           }}
         >
-          All VPG contracts (1000 pts - {numberFormat(rangeMax)}) contracts from 2015-2025 capped at 7%, avg. Increase of 5%
+          All VPA contracts (1000 pts - {numberFormat(rangeMax)}) contracts from 2015-2026 capped at 7%, avg. Increase of 5%
         </p>
       </div>
 
@@ -262,6 +305,141 @@ export default function ProjectionPage({ params }) {
           </div>
         )
       })}
+
+      {showComparison && (
+        <div
+          style={{
+            marginBottom: isPdf ? 24 : 40,
+            border: '1px solid #c9a86a',
+            borderRadius: isPdf ? 10 : 16,
+            padding: isPdf ? 14 : 22,
+            background: 'linear-gradient(135deg, #0f172a, #111827)',
+            pageBreakInside: 'avoid',
+            boxShadow: isPdf ? 'none' : '0 18px 45px rgba(0,0,0,0.22)'
+          }}
+        >
+          <div
+            style={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              gap: 18,
+              alignItems: 'flex-start',
+              marginBottom: 12
+            }}
+          >
+            <div>
+              <h3
+                style={{
+                  color: '#c9a86a',
+                  margin: '0 0 6px',
+                  fontSize: isPdf ? 14 : 18,
+                  letterSpacing: 0.5
+                }}
+              >
+                Search by Level Comparison · {getLevelByPoints(searchAnnualPoints)}
+              </h3>
+
+              <p
+                style={{
+                  color: '#9ca3af',
+                  margin: 0,
+                  fontSize: isPdf ? 11 : 13,
+                  lineHeight: 1.45
+                }}
+              >
+                All Club and Real Estate contracts ({numberFormat(nextTier)} pts - 42,240 pts) contracts from 2019-2026 capped at 2%, avg. Increase of 1.2% (Mexican natural inflation rate)
+              </p>
+            </div>
+
+            <div
+              style={{
+                background: '#111827',
+                border: '1px solid #1f2937',
+                borderRadius: 12,
+                padding: isPdf ? 8 : 12,
+                textAlign: 'right',
+                minWidth: 145
+              }}
+            >
+              <div
+                style={{
+                  color: '#9ca3af',
+                  fontSize: isPdf ? 9 : 11,
+                  textTransform: 'uppercase',
+                  letterSpacing: 1,
+                  marginBottom: 5
+                }}
+              >
+                Annual Points
+              </div>
+
+              <div
+                style={{
+                  color: '#f9fafb',
+                  fontWeight: 'bold',
+                  fontSize: isPdf ? 14 : 18
+                }}
+              >
+                {numberFormat(searchAnnualPoints)}
+              </div>
+            </div>
+          </div>
+
+          <div
+            style={{
+              display: 'flex',
+              gap: isPdf ? 8 : 15,
+              alignItems: 'stretch'
+            }}
+          >
+            {comparisonColumns.map((col, i) => (
+              <div
+                key={i}
+                style={{
+                  flex: 1,
+                  background: '#0f172a',
+                  border: '1px solid #1f2937',
+                  borderRadius: isPdf ? 8 : 12,
+                  padding: isPdf ? 8 : 12,
+                  minWidth: 0
+                }}
+              >
+                {col.map((row) => (
+                  <div
+                    key={row.year}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: 8,
+                      padding: isPdf ? '4px 0' : '6px 0',
+                      borderBottom: '1px solid #1f2937',
+                      fontSize: isPdf ? 10.5 : 14,
+                      lineHeight: 1.25
+                    }}
+                  >
+                    <span>{row.year}</span>
+                    <span style={{ fontWeight: 'bold', whiteSpace: 'nowrap' }}>
+                      {money(row.value)}
+                    </span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              textAlign: 'right',
+              marginTop: 10,
+              fontWeight: 'bold',
+              color: '#c9a86a',
+              fontSize: isPdf ? 12 : 15
+            }}
+          >
+            Comparison Total: {money(comparisonTotal)}
+          </div>
+        </div>
+      )}
 
       <div
         style={{
@@ -361,6 +539,25 @@ export default function ProjectionPage({ params }) {
             Internal Review<br />
             Villa Group Access
           </div>
+
+          <button
+            onClick={() => setShowSearchModal(true)}
+            style={{
+              marginTop: 24,
+              width: '100%',
+              padding: '13px 16px',
+              background: '#c9a86a',
+              color: '#111827',
+              border: 'none',
+              borderRadius: 10,
+              cursor: 'pointer',
+              fontWeight: 'bold',
+              textTransform: 'uppercase',
+              letterSpacing: 0.8
+            }}
+          >
+            Search by Level
+          </button>
         </div>
 
         <div style={{ flex: 1 }}>
@@ -418,6 +615,174 @@ export default function ProjectionPage({ params }) {
           Download Official Report
         </button>
       </div>
+
+      {showSearchModal && (
+        <div
+          style={{
+            position: 'fixed',
+            inset: 0,
+            background: 'rgba(15,23,42,0.72)',
+            backdropFilter: 'blur(6px)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            padding: 24,
+            zIndex: 9999
+          }}
+        >
+          <div
+            style={{
+              width: 'min(620px, 96vw)',
+              background: '#111827',
+              color: '#f9fafb',
+              borderRadius: 24,
+              border: '1px solid #c9a86a',
+              padding: 28,
+              boxShadow: '0 30px 90px rgba(0,0,0,0.42)'
+            }}
+          >
+            <div
+              style={{
+                display: 'flex',
+                justifyContent: 'space-between',
+                alignItems: 'flex-start',
+                gap: 18,
+                marginBottom: 24
+              }}
+            >
+              <div>
+                <h2
+                  style={{
+                    margin: 0,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1.4,
+                    fontSize: 24
+                  }}
+                >
+                  Search by Level
+                </h2>
+
+                <div
+                  style={{
+                    width: 64,
+                    height: 3,
+                    background: '#c9a86a',
+                    marginTop: 10
+                  }}
+                />
+              </div>
+
+              <button
+                onClick={() => setShowSearchModal(false)}
+                style={{
+                  background: 'transparent',
+                  border: 'none',
+                  color: '#ffffff',
+                  fontSize: 32,
+                  cursor: 'pointer',
+                  lineHeight: 1
+                }}
+              >
+                ×
+              </button>
+            </div>
+
+            <div
+              style={{
+                display: 'grid',
+                gridTemplateColumns: '1fr 1fr',
+                gap: 16,
+                alignItems: 'end'
+              }}
+            >
+              <div>
+                <label
+                  style={{
+                    display: 'block',
+                    color: '#c9a86a',
+                    fontSize: 12,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                    marginBottom: 7,
+                    fontWeight: 'bold'
+                  }}
+                >
+                  Annual Points
+                </label>
+
+                <input
+                  value={searchAnnualPoints}
+                  onChange={(e) => setSearchAnnualPoints(e.target.value)}
+                  placeholder="Example: 15000"
+                  style={{
+                    width: '100%',
+                    boxSizing: 'border-box',
+                    padding: 14,
+                    borderRadius: 12,
+                    border: '1px solid #374151',
+                    background: '#0f172a',
+                    color: '#f9fafb',
+                    outline: 'none',
+                    fontSize: 16,
+                    fontWeight: 'bold'
+                  }}
+                />
+              </div>
+
+              <div
+                style={{
+                  background: '#0f172a',
+                  border: '1px solid #1f2937',
+                  borderRadius: 14,
+                  padding: 15
+                }}
+              >
+                <div
+                  style={{
+                    color: '#9ca3af',
+                    fontSize: 11,
+                    textTransform: 'uppercase',
+                    letterSpacing: 1,
+                    marginBottom: 6
+                  }}
+                >
+                  Detected Level
+                </div>
+
+                <div
+                  style={{
+                    color: '#c9a86a',
+                    fontSize: 19,
+                    fontWeight: 'bold'
+                  }}
+                >
+                  {getLevelByPoints(searchAnnualPoints)}
+                </div>
+              </div>
+            </div>
+
+            <button
+              onClick={runSearchByLevel}
+              style={{
+                marginTop: 24,
+                width: '100%',
+                padding: 15,
+                background: '#c9a86a',
+                color: '#111827',
+                border: 'none',
+                borderRadius: 12,
+                cursor: 'pointer',
+                fontWeight: 'bold',
+                textTransform: 'uppercase',
+                letterSpacing: 1,
+                fontSize: 15
+              }}
+            >
+              Run
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
