@@ -214,15 +214,18 @@ export default function ProjectionPage({ params }) {
         />
 
         <p
-          style={{
-            color: '#9ca3af',
-            margin: 0,
-            fontSize: isPdf ? 12 : 14,
-            lineHeight: 1.45
-          }}
-        >
-          All VPA contracts (1000 pts - {numberFormat(rangeMax)}) contracts from 2015-2026 capped at 7%, avg. Increase of 5%
-        </p>
+style={{
+color: '#9ca3af',
+margin: 0,
+fontSize: isPdf ? 12 : 14,
+lineHeight: 1.45
+}}
+>
+{contracts.some(c => Number(c.annual_maintenance_increase) === 1.2)
+? `All Club and Real Estate contracts (${numberFormat(nextTier)} pts - 42,240 pts) contracts from 2019-2026 capped at 2%, avg. Increase of 1.2% (Mexican natural inflation rate)`
+: `All VPA contracts (1000 pts - ${numberFormat(rangeMax)}) contracts from 2015-2026 capped at 7%, avg. Increase of 5%`
+}
+</p>
       </div>
 
       {contracts.map((contract) => {
