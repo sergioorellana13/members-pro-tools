@@ -92,8 +92,8 @@ export default function ProjectionPage({ params }) {
     const increase = 1.2
     let rows = []
 
-    for (let i = 0; i < 8; i++) {
-      const year = 2019 + i
+    for (let i = 0; i < 50; i++) {
+      const year = 2026 + i
       const value = base * Math.pow(1 + increase / 100, i)
       rows.push({ year, value })
     }
