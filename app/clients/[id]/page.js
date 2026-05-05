@@ -138,8 +138,6 @@ export default function ClientPage({ params }) {
               <div style={goldLine} />
               <p style={clientMeta}>
                 Beneficiaries: {client.beneficiaries} · Prior presentations:{' '}
-                {client.prior_presentations} · Next Tier:{' '}
-                {numberFormat(client.next_tier)} pts
               </p>
             </div>
 
