@@ -65,7 +65,7 @@ export default function WorkspacePage() {
 
   const [showAddSale, setShowAddSale] = useState(false)
   const [newSaleForm, setNewSaleForm] = useState(emptySaleForm)
-
+  const [noTourDays, setNoTourDays] = useState([])
   useEffect(() => {
     loadWorkspace()
   }, [month, year])
@@ -213,6 +213,20 @@ export default function WorkspacePage() {
       setLoading(false)
       return
     }
+
+    const { data: noTourData, error: noTourError } = await supabase
+  .from('no_tour_days')
+  .select('*')
+  .gte('date', formatDate(monthStart))
+  .lte('date', formatDate(monthEnd))
+
+if (noTourError) {
+  alert('Error loading no tour days: ' + noTourError.message)
+  setLoading(false)
+  return
+}
+
+setNoTourDays(noTourData || [])
 
     setContracts(contractsData || [])
 
@@ -460,7 +474,33 @@ sales.forEach((sale) => {
   })
 })
 
+const noTourForDay = noTourDays.filter((item) => {
+  const d = new Date(item.date + 'T12:00:00')
+  return (
+    d.getFullYear() === year &&
+    d.getMonth() === month &&
+    d.getDate() === day
+  )
+})
+
+noTourForDay.forEach((item) => {
+finalItems.push({
+type: 'no_tour',
+id: item.id,
+client_id: null,
+client_name: 'NO TOUR',
+contract_numbers: [],
+contract_ids: [],
+tour_type: 'NO TOUR',
+tour_date: item.date,
+purchase_price: null,
+status: null,
+sale: null
+})
+})
+
 return finalItems
+
   }
 
   const getDayStatus = (items) => {
@@ -551,12 +591,59 @@ return finalItems
       return
     }
 
+
     setShowAddTour(false)
     setSelectedDay(null)
     setTourSearch('')
     setTourMatches([])
     await loadWorkspace()
   }
+  
+const addNoTourToDay = async () => {
+if (!selectedDay || !user) return
+
+const selectedDateString = formatDate(new Date(year, month, selectedDay))
+
+const alreadyExists = noTourDays.some((item) => item.date === selectedDateString)
+
+if (alreadyExists) {
+alert('NO TOUR already exists for this day.')
+return
+}
+
+const { error } = await supabase
+.from('no_tour_days')
+.insert({
+user_id: user.id,
+date: selectedDateString
+})
+
+if (error) {
+alert('Error adding NO TOUR: ' + error.message)
+return
+}
+
+setShowAddTour(false)
+setSelectedDay(null)
+await loadWorkspace()
+}
+const removeNoTourDay = async (id) => {
+  const confirmDelete = confirm('Remove NO TOUR for this day?')
+  if (!confirmDelete) return
+
+  const { error } = await supabase
+    .from('no_tour_days')
+    .delete()
+    .eq('id', id)
+
+  if (error) {
+    alert('Error removing NO TOUR: ' + error.message)
+    return
+  }
+
+  await loadWorkspace()
+}
+
 
   const openSaleBubble = (sale) => {
     setSelectedSale(sale)
@@ -1306,23 +1393,47 @@ alert('Inserted stats:')
       </>
     ) : (
       <>
-        <div style={itemTitle}>
-          Tour / Contract {item.tour_type === 'Ct' ? '· Ct' : '· Q'}
-        </div>
+    
+       {item.type === 'no_tour' ? (
+<>
+  <button
+    onClick={(e) => {
+      e.stopPropagation()
+      removeNoTourDay(item.id)
+    }}
+    style={{
+      position: 'absolute',
+      top: 4,
+      right: 6,
+      width: 18,
+      height: 18,
+      borderRadius: 999,
+      border: 'none',
+      background: '#dc2626',
+      color: 'white',
+      fontSize: 10,
+      cursor: 'pointer'
+    }}
+  >
+    ×
+  </button>
 
-        <div style={clientText}>{item.client_name}</div>
-
-        <div style={contractText}>
-          {item.contract_numbers.length > 0
-            ? item.contract_numbers.map((n) => `#${n}`).join(', ')
-            : 'No contract number'}
-        </div>
-
-        {item.type === 'sale' && (
-          <div style={saleVolume}>
-            {formatMoney(item.purchase_price)}
-          </div>
-        )}
+  <div style={itemTitle}>NO TOUR</div>
+  <div style={clientText}>No tour taken</div>
+</>
+) : (
+  <>
+    <div style={itemTitle}>
+      Tour / Contract {item.tour_type === 'Ct' ? '· Ct' : '· Q'}
+    </div>
+    <div style={clientText}>{item.client_name}</div>
+    <div style={contractText}>
+      {item.contract_numbers.length > 0
+        ? item.contract_numbers.map((n) => `#${n}`).join(', ')
+        : 'No contract number'}
+    </div>
+  </>
+)}
       </>
     )}
   </div>
@@ -1369,6 +1480,13 @@ alert('Inserted stats:')
                 Ct
               </label>
             </div>
+
+            <button
+            onClick={addNoTourToDay}
+            style={darkButton}
+          >
+            NO TOUR
+          </button>
 
             <div style={addTourSearchRow}>
               <input
@@ -1928,7 +2046,7 @@ const cell = {
 const fullDownDay = { border: '2px solid #22c55e', boxShadow: '0 0 0 1px rgba(34,197,94,0.25), 0 12px 30px rgba(34,197,94,0.12)' }
 const penderDay = { border: '2px solid #facc15', boxShadow: '0 0 0 1px rgba(250,204,21,0.25), 0 12px 30px rgba(250,204,21,0.1)' }
 const dayNumber = { color: '#f9fafb', fontWeight: 'bold', marginBottom: 8 }
-const calendarItem = { width: '100%', textAlign: 'left', background: '#0f172a', border: '1px solid #1f2937', borderRadius: 10, padding: 8, marginBottom: 7, fontSize: 11, lineHeight: 1.35, color: '#f9fafb' }
+const calendarItem = { position: 'relative', width: '100%', textAlign: 'left', background: '#0f172a', border: '1px solid #1f2937', borderRadius: 10, padding: 8, marginBottom: 7, fontSize: 11, lineHeight: 1.35, color: '#f9fafb' }
 const itemFullDown = { border: '1px solid #22c55e', background: 'rgba(34,197,94,0.12)' }
 const itemPender = { border: '1px solid #facc15', background: 'rgba(250,204,21,0.12)' }
 const itemWelcomeCall = {

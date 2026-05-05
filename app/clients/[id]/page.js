@@ -31,7 +31,7 @@ export default function ClientPage({ params }) {
 
     const { data: contractsData, error: contractsError } = await supabase
       .from('contracts')
-      .select('*')
+      .select('*, clients(full_name)')
       .eq('client_id', clientId)
       .order('contract_label', { ascending: true })
 
@@ -138,6 +138,7 @@ export default function ClientPage({ params }) {
               <div style={goldLine} />
               <p style={clientMeta}>
                 Beneficiaries: {client.beneficiaries} · Prior presentations:{' '}
+                {client.prior_presentations} · Next Tier:{' '}
               </p>
             </div>
 
