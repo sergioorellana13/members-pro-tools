@@ -82,26 +82,32 @@ export default function EditClientPage({ params }) {
   }
 
   const deleteContract = async (index) => {
-    const contract = contracts[index]
+const contract = contracts[index]
 
-    if (contract.id) {
-      const confirmDelete = confirm('Delete this contract permanently?')
-      if (!confirmDelete) return
+const confirmDelete = confirm('Delete this contract permanently?')
+if (!confirmDelete) return
 
-      const { error } = await supabase
-        .from('contracts')
-        .delete()
-        .eq('id', contract.id)
+if (contract.id) {
+const { data: deletedData, error } = await supabase
+.from('contracts')
+.delete()
+.eq('id', contract.id)
+.select()
 
-      if (error) {
-        alert('Error deleting contract: ' + error.message)
-        return
-      }
-    }
+if (error) {
+alert('Error deleting contract: ' + error.message)
+return
+}
 
-    const copy = contracts.filter((_, i) => i !== index)
-    setContracts(copy)
-  }
+if (!deletedData || deletedData.length === 0) {
+alert('Contract was not deleted. Check permissions or contract id.')
+return
+}
+}
+
+const copy = contracts.filter((_, i) => i !== index)
+setContracts(copy)
+}
 
   const saveChanges = async () => {
     setSaving(true)
@@ -131,6 +137,7 @@ export default function EditClientPage({ params }) {
         contract_label: Number(c.contract_label || 0),
         contract_number: c.contract_number || '',
         annual_points: Number(c.annual_points || 0),
+        contract_years: Number(c.contract_years || 0),
         purchase_date: c.purchase_date || null,
         pending_balance: Number(c.pending_balance || 0),
         interest_rate: Number(c.interest_rate || 0),

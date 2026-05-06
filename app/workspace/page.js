@@ -60,12 +60,14 @@ export default function WorkspacePage() {
     welcome_call_date: '',
     sale_type: 'upgrade',
     new_points_sold: '',
-    years: ''
+    years: '',
+    client_photo_url: ''
   }
 
   const [showAddSale, setShowAddSale] = useState(false)
   const [newSaleForm, setNewSaleForm] = useState(emptySaleForm)
   const [noTourDays, setNoTourDays] = useState([])
+  const [uploadingPhoto, setUploadingPhoto] = useState(false)
   useEffect(() => {
     loadWorkspace()
   }, [month, year])
@@ -910,7 +912,43 @@ setNewSaleForm({
     closeBubble()
   }
 
-  const saveNewSaleFromTour = async () => {
+  
+const uploadClientPhoto = async (file) => {
+  if (!file) return
+
+  try {
+    setUploadingPhoto(true)
+
+    const fileExt = file.name.split('.').pop()
+    const fileName = `${Date.now()}.${fileExt}`
+
+    const { error: uploadError } = await supabase.storage
+      .from('sale-photos')
+      .upload(fileName, file)
+
+    if (uploadError) {
+      alert('Error uploading image: ' + uploadError.message)
+      return
+    }
+
+    const { data } = supabase.storage
+      .from('sale-photos')
+      .getPublicUrl(fileName)
+
+    setNewSaleForm({
+      ...newSaleForm,
+      client_photo_url: data.publicUrl
+    })
+
+  } catch (err) {
+    alert('Error uploading image')
+  } finally {
+    setUploadingPhoto(false)
+  }
+}
+
+
+const saveNewSaleFromTour = async () => {
     if (!selectedTour || !user) return
 
     if (!newSaleForm.full_down && !newSaleForm.pender) {
@@ -945,6 +983,7 @@ setNewSaleForm({
     sale_type: newSaleForm.sale_type || 'upgrade',
     new_points_sold: Number(newSaleForm.new_points_sold || 0),
     years: Number(newSaleForm.years || 0),
+    client_photo_url: newSaleForm.client_photo_url || null,
     created_at: safeTimestamp
   })
   .select()
@@ -1750,6 +1789,41 @@ alert('Inserted stats:')
 )}
                   <SaleInput label="VLO" value={newSaleForm.vlo} onChange={(v) => updateNewSaleForm('vlo', v)} />
                   <SaleInput label="Welcome Call Date" type="date" value={newSaleForm.welcome_call_date} onChange={(v) => updateNewSaleForm('welcome_call_date', v)} />
+
+<div style={bubbleField}>
+  <div style={bubbleLabel}>Client Picture</div>
+
+  {newSaleForm.client_photo_url && (
+    <img
+      src={newSaleForm.client_photo_url}
+      alt="client"
+      style={{
+        width: '100%',
+        borderRadius: 12,
+        marginBottom: 10,
+        border: '1px solid #d1d5db'
+      }}
+    />
+  )}
+
+  <input
+    type="file"
+    accept="image/*"
+    capture="environment"
+    onChange={(e) => {
+      const file = e.target.files?.[0]
+      if (file) uploadClientPhoto(file)
+    }}
+    style={{ marginTop: 10 }}
+  />
+
+  {uploadingPhoto && (
+    <div style={{ marginTop: 10, color: '#c9a86a' }}>
+      Uploading picture...
+    </div>
+  )}
+</div>
+
                 </div>
 
                 <div style={checkboxRow}>

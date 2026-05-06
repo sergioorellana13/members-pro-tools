@@ -427,7 +427,7 @@ if (insertedSale?.id) {
       .eq('client_id', clientId)
       .like('contract_number', '35-%')
       .limit(1)
-      .single()
+      .maybeSingle()
 
     if (error) {
       alert('Could not load current annual points: ' + error.message)
