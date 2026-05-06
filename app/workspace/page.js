@@ -1603,6 +1603,16 @@ alert('Inserted stats:')
                 {formatMoney(saleDraft.purchase_price)}
               </div>
             </div>
+             {selectedSale.client_photo_url && (
+             <div style={clientPhotoBox}>
+             <div style={bubbleLabel}>Client Picture</div>
+             <img
+             src={selectedSale.client_photo_url}
+             alt="Client purchase"
+             style={clientPhotoImage}
+             />
+         </div>
+)}
 
             <div style={bubbleGrid}>
               <BubbleField label="liner" value={saleDraft.liner} editable={editMode} onChange={(v) => updateDraft('liner', v)} />
@@ -2171,6 +2181,8 @@ const bubbleGoldLine = { width: 64, height: 3, background: '#c9a86a', margin: '1
 const bubbleSub = { color: '#64748b', margin: 0 }
 const closeButton = { background: '#111827', color: 'white', border: 'none', width: 38, height: 38, borderRadius: 999, cursor: 'pointer', fontSize: 24 }
 const saleStatusRow = { display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#e2e8f0', borderRadius: 18, padding: 16, marginBottom: 20 }
+const clientPhotoBox = { background: 'white', border: '1px solid #e5e7eb', borderRadius: 18, padding: 14, marginBottom: 20 }
+const clientPhotoImage = { width: '100%', maxHeight: 360, objectFit: 'cover', borderRadius: 14, border: '1px solid #d1d5db' }
 const statusPill = { background: '#111827', color: '#c9a86a', borderRadius: 999, padding: '8px 14px', fontWeight: 'bold', letterSpacing: 1 }
 const bubbleAmount = { fontSize: 30, fontWeight: 'bold', color: '#111827' }
 const bubbleGrid = { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(210px, 1fr))', gap: 14 }
