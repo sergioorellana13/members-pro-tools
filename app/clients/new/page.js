@@ -1,576 +1,1259 @@
 'use client'
 
-import { useState } from 'react'
+
+
+import { useRef, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
 
+
+
 export default function NewClientPage() {
-  const [saving, setSaving] = useState(false)
-
-  const [client, setClient] = useState({
-    full_name: '',
-    beneficiaries: '',
-    prior_presentations: '',
-    next_tier: '',
-    certificate_date: ''
-  })
-
-  const [contracts, setContracts] = useState([createEmptyContract(1)])
-
-  const updateClient = (field, value) => {
-    setClient({ ...client, [field]: value })
-  }
-
-  const calculateYearsRemaining = (expirationDate) => {
-    if (!expirationDate) return 0
-
-    const today = new Date()
-    const expiration = new Date(expirationDate + 'T12:00:00')
-
-    let years = expiration.getFullYear() - today.getFullYear()
-    const monthDiff = expiration.getMonth() - today.getMonth()
-    const dayDiff = expiration.getDate() - today.getDate()
-
-    if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-      years -= 1
-    }
-
-    return Math.max(years, 0)
-  }
-
-  const updateContract = (index, field, value) => {
-    const copy = [...contracts]
-
-    copy[index] = {
-      ...copy[index],
-      [field]: value
-    }
-
-    if (field === 'expiration_date') {
-      copy[index].years_remaining = calculateYearsRemaining(value)
-    }
-
-    setContracts(copy)
-  }
-
-  const addContract = () => {
-    setContracts([...contracts, createEmptyContract(contracts.length + 1)])
-  }
-
-  const removeContract = (index) => {
-    if (contracts.length === 1) return
-    setContracts(contracts.filter((_, i) => i !== index))
-  }
-
-  const saveCompleteFile = async () => {
-    if (!client.full_name.trim()) {
-      alert('Full name is required.')
-      return
-    }
-
-    setSaving(true)
-
-    const { data: userData, error: userError } = await supabase.auth.getUser()
-
-    if (userError || !userData.user) {
-      alert('Error: user not found. Please login again.')
-      window.location.href = '/'
-      return
-    }
-
-    const { data: newClient, error: clientError } = await supabase
-      .from('clients')
-      .insert({
-        full_name: client.full_name.trim(),
-        beneficiaries: Number(client.beneficiaries || 0),
-        prior_presentations: Number(client.prior_presentations || 0),
-        next_tier: Number(client.next_tier || 0),
-        price_per_point_increase: Number(client.price_per_point_increase || 0),
-        benefits_to_add: client.benefits_to_add || '',
-        certificate_date: client.certificate_date || null,
-        seller_id: userData.user.id
-      })
-      .select()
-      .single()
-
-    if (clientError) {
-      setSaving(false)
-      alert('Error saving client: ' + clientError.message)
-      return
-    }
-
-    const validContracts = contracts.filter((c) => c.contract_number.trim())
-
-    if (validContracts.length === 0) {
-      setSaving(false)
-      window.location.href = `/clients/${newClient.id}`
-      return
-    }
-
-    const payload = validContracts.map((contract, index) => ({
-      client_id: newClient.id,
-      contract_label: index + 1,
-      contract_number: contract.contract_number.trim(),
-      annual_points: Number(contract.annual_points || 0),
-      contract_years: Number(contract.contract_years || 0),
-      purchase_date: contract.purchase_date || null,
-      expiration_date: contract.expiration_date || null,
-      last_payment_date: contract.last_payment_date || null,
-      pending_balance: Number(contract.pending_balance || 0),
-      interest_rate: Number(contract.interest_rate || 0),
-      current_monthly_payment: Number(contract.current_monthly_payment || 0),
-      annual_maintenance_increase: Number(contract.annual_maintenance_increase || 0),
-      years_remaining: calculateYearsRemaining(contract.expiration_date),
-      total_paid: Number(contract.total_paid || 0),
-      hidden_from_calendar: false
-    }))
-
-    const { error: contractsError } = await supabase
-      .from('contracts')
-      .insert(payload)
-
-    if (contractsError) {
-      setSaving(false)
-      alert('Client was saved, but contracts failed: ' + contractsError.message)
-      return
-    }
-
-    setSaving(false)
-    window.location.href = `/clients/${newClient.id}`
-  }
-
-  return (
-    <div style={page}>
-      <div style={topBrand}>
-        <img src="/logo.png" alt="logo" style={logo} />
-
-        <div>
-          <h1 style={brandTitle}>New Member File</h1>
-          <p style={brandSub}>Complete client and contract registration</p>
-        </div>
-      </div>
-
-      <div style={shell}>
-        <div style={header}>
-          <div>
-            <h2 style={sectionTitle}>Client Information</h2>
-            <div style={goldLine} />
-            <p style={muted}>Create the member record and attach contract data in one file.</p>
-          </div>
-
-          <button
-            onClick={() => window.location.href = '/dashboard'}
-            style={darkButton}
-          >
-            Dashboard
-          </button>
-        </div>
-
-        <div style={formGrid}>
-          <Field
-            label="Full Name"
-            value={client.full_name}
-            onChange={(v) => updateClient('full_name', v)}
-            placeholder="Member full name"
-          />
-
-          <Field
-            label="Beneficiaries"
-            value={client.beneficiaries}
-            onChange={(v) => updateClient('beneficiaries', v)}
-            placeholder="Example: 2"
-          />
-
-          <Field
-            label="Presentations"
-            value={client.prior_presentations}
-            onChange={(v) => updateClient('prior_presentations', v)}
-            placeholder="Example: 1"
-          />
-
-          <Field
-            label="Next Tier"
-            value={client.next_tier}
-            onChange={(v) => updateClient('next_tier', v)}
-            placeholder="Example: 10000"
-          />
-          <Field
-            label="Price Per Point Increase"
-            value={client.price_per_point_increase}
-            onChange={(v) => setClient({...client, price_per_point_increase: v})}
-          />
-
-          <Field
-            label="Benefits To Add"
-            value={client.benefits_to_add}
-            onChange={(v) => setClient({...client, benefits_to_add: v})}
-          />
-
-          <Field
-            label="Certificate Date"
-            type="date"
-            value={client.certificate_date}
-            onChange={(v) => updateClient('certificate_date', v)}
-          />
-        </div>
-
-        <div style={divider} />
-
-        <div style={sectionHeader}>
-          <div>
-            <h2 style={sectionTitle}>Contract Information</h2>
-            <div style={goldLine} />
-          </div>
-
-          <button onClick={addContract} style={greenButton}>
-            Add Contract
-          </button>
-        </div>
-
-        {contracts.map((contract, index) => (
-          <div key={index} style={contractCard}>
-            <div style={contractHeader}>
-              <h3 style={contractTitle}>Contract {index + 1}</h3>
-
-              {contracts.length > 1 && (
-                <button
-                  onClick={() => removeContract(index)}
-                  style={redButton}
-                >
-                  Remove
-                </button>
-              )}
-            </div>
-
-            <div style={formGrid}>
-              <Field
-                label="Contract Number"
-                value={contract.contract_number}
-                onChange={(v) => updateContract(index, 'contract_number', v)}
-              />
-
-              <Field
-                label="Annual Points"
-                value={contract.annual_points}
-                onChange={(v) => updateContract(index, 'annual_points', v)}
-              />
-              <Field
-                label="Total Years"
-                value={contract.contract_years}
-                onChange={(v) => updateContract(index, 'contract_years', v)}
-              />
-
-              <Field
-                label="Purchase Date"
-                type="date"
-                value={contract.purchase_date}
-                onChange={(v) => updateContract(index, 'purchase_date', v)}
-              />
-
-              <Field
-                label="Expiration Date"
-                type="date"
-                value={contract.expiration_date}
-                onChange={(v) => updateContract(index, 'expiration_date', v)}
-              />
-
-              <ReadOnlyField
-                label="Years Remaining"
-                value={contract.years_remaining}
-              />
+const [saving, setSaving] = useState(false)
 
 
-              <Field
-                label="Pending Balance"
-                value={contract.pending_balance}
-                onChange={(v) => updateContract(index, 'pending_balance', v)}
-              />
 
-              <Field
-                label="Interest Rate %"
-                value={contract.interest_rate}
-                onChange={(v) => updateContract(index, 'interest_rate', v)}
-              />
+const [client, setClient] = useState({
+full_name: '',
+beneficiaries: '',
+prior_presentations: '',
+next_tier: '',
+certificate_date: '',
+price_freeze_number: '0.35'
+})
 
+
+
+const [contracts, setContracts] = useState([createEmptyContract(1)])
+const [showEquityPreview, setShowEquityPreview] = useState(false)
+const [equityPreviewUrl, setEquityPreviewUrl] = useState('')
+const [scannedEquities, setScannedEquities] = useState([])
+const [readingEquity, setReadingEquity] = useState(false)
+const [equityOcrText, setEquityOcrText] = useState('')
+const equityInputRef = useRef(null)
+
+
+
+const updateClient = (field, value) => {
+setClient({ ...client, [field]: value })
+}
+
+
+
+const openEquityScanner = () => {
+if (equityInputRef.current) {
+equityInputRef.current.click()
+}
+}
+
+
+
+const handleEquityImage = async (event) => {
+const file = event.target.files?.[0]
+
+
+if (!file) return
+
+
+const previewUrl = URL.createObjectURL(file)
+
+
+const newEquity = {
+id: crypto.randomUUID(),
+file_name: file.name,
+preview_url: previewUrl,
+created_at: new Date().toISOString()
+}
+
+
+setScannedEquities([...scannedEquities, newEquity])
+setEquityPreviewUrl(previewUrl)
+setShowEquityPreview(true)
+setReadingEquity(true)
+setEquityOcrText('')
+
+
+event.target.value = ''
+
+
+try {
+const Tesseract = await import('tesseract.js')
+
+
+const result = await Tesseract.recognize(
+file,
+'eng',
+{
+logger: () => {}
+}
+)
+
+
+setEquityOcrText(result?.data?.text || 'No text detected.')
+} catch (error) {
+setEquityOcrText('OCR failed: ' + error.message)
+} finally {
+setReadingEquity(false)
+}
+}
+
+
+
+const scanAnotherEquity = () => {
+setShowEquityPreview(false)
+setEquityPreviewUrl('')
+setEquityOcrText('')
+
+
+setTimeout(() => {
+openEquityScanner()
+}, 150)
+}
+
+
+
+const reviewContractsFromEquity = () => {
+setShowEquityPreview(false)
+setEquityPreviewUrl('')
+}
+
+
+
+const calculateYearsRemaining = (expirationDate) => {
+if (!expirationDate) return 0
+
+
+
+const today = new Date()
+const expiration = new Date(expirationDate + 'T12:00:00')
+
+
+
+let years = expiration.getFullYear() - today.getFullYear()
+const monthDiff = expiration.getMonth() - today.getMonth()
+const dayDiff = expiration.getDate() - today.getDate()
+
+
+
+if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+years -= 1
+}
+
+
+
+return Math.max(years, 0)
+}
+
+
+
+const calculateContractYears = (purchaseDate, expirationDate) => {
+if (!purchaseDate || !expirationDate) return 0
+
+
+
+const purchase = new Date(purchaseDate + 'T12:00:00')
+const expiration = new Date(expirationDate + 'T12:00:00')
+
+
+
+let years = expiration.getFullYear() - purchase.getFullYear()
+
+
+
+const monthDiff = expiration.getMonth() - purchase.getMonth()
+const dayDiff = expiration.getDate() - purchase.getDate()
+
+
+
+if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+years -= 1
+}
+
+
+
+return Math.max(years, 0)
+}
+
+
+
+const cleanNumber = (value) => {
+if (value === null || value === undefined) return 0
+
+
+
+const cleaned = String(value)
+.replace(/,/g, '')
+.replace(/\$/g, '')
+.trim()
+
+
+
+return Number(cleaned || 0)
+}
+
+
+
+const updateContract = (index, field, value) => {
+const copy = [...contracts]
+
+
+
+copy[index] = {
+...copy[index],
+[field]: value
+}
+
+
+
+const purchaseDate = copy[index].purchase_date
+const expirationDate = copy[index].expiration_date
+
+
+
+if (purchaseDate && expirationDate) {
+copy[index].contract_years = calculateContractYears(
+purchaseDate,
+expirationDate
+)
+}
+
+
+
+if (expirationDate) {
+copy[index].years_remaining = calculateYearsRemaining(expirationDate)
+}
+
+
+
+const annualPoints = cleanNumber(copy[index].annual_points)
+const contractYears = cleanNumber(copy[index].contract_years)
+const yearsRemaining = cleanNumber(copy[index].years_remaining)
+
+
+
+copy[index].total_points_purchased = annualPoints * contractYears
+copy[index].remaining_points = annualPoints * yearsRemaining
+
+
+
+if (field === 'annual_points') {
+const maintenanceCalc = annualPoints * 0.525
+
+
+
+copy[index].maintenance_fee =
+maintenanceCalc > 0 ? maintenanceCalc.toFixed(2) : ''
+}
+
+
+
+setContracts(copy)
+}
+
+
+
+const addContract = () => {
+setContracts([...contracts, createEmptyContract(contracts.length + 1)])
+}
+
+
+
+const removeContract = (index) => {
+if (contracts.length === 1) return
+setContracts(contracts.filter((_, i) => i !== index))
+}
+
+
+
+const saveCompleteFile = async () => {
+if (!client.full_name.trim()) {
+alert('Full name is required.')
+return
+}
+
+
+
+setSaving(true)
+
+
+
+const { data: userData, error: userError } = await supabase.auth.getUser()
+
+
+
+if (userError || !userData.user) {
+alert('Error: user not found. Please login again.')
+window.location.href = '/'
+return
+}
+
+
+
+const { data: newClient, error: clientError } = await supabase
+.from('clients')
+.insert({
+full_name: client.full_name.trim(),
+beneficiaries: Number(client.beneficiaries || 0),
+prior_presentations: Number(client.prior_presentations || 0),
+next_tier: Number(client.next_tier || 0),
+price_per_point_increase: Number(client.price_per_point_increase || 0),
+benefits_to_add: client.benefits_to_add || '',
+certificate_date: client.certificate_date || null,
+price_freeze_number: Number(client.price_freeze_number || 0.35),
+seller_id: userData.user.id
+})
+.select()
+.single()
+
+
+
+if (clientError) {
+setSaving(false)
+alert('Error saving client: ' + clientError.message)
+return
+}
+
+
+
+const validContracts = contracts.filter((c) => c.contract_number.trim())
+
+
+
+if (validContracts.length === 0) {
+setSaving(false)
+window.location.href = `/clients/${newClient.id}`
+return
+}
+
+
+
+const payload = validContracts.map((contract, index) => ({
+client_id: newClient.id,
+contract_label: index + 1,
+contract_number: contract.contract_number.trim(),
+annual_points: Number(contract.annual_points || 0),
+contract_years: Number(contract.contract_years || 0),
+purchase_date: contract.purchase_date || null,
+expiration_date: contract.expiration_date || null,
+last_payment_date: contract.last_payment_date || null,
+pending_balance: Number(contract.pending_balance || 0),
+interest_rate: Number(contract.interest_rate || 0),
+current_monthly_payment: Number(contract.current_monthly_payment || 0),
+annual_maintenance_increase: Number(contract.annual_maintenance_increase || 0),
+maintenance_fee: Number(contract.maintenance_fee || 0),
+total_points_purchased: Number(contract.total_points_purchased || 0),
+remaining_points: Number(contract.remaining_points || 0),
+years_remaining: calculateYearsRemaining(contract.expiration_date),
+total_paid: Number(contract.total_paid || 0),
+hidden_from_calendar: false
+}))
+
+
+
+const { error: contractsError } = await supabase
+.from('contracts')
+.insert(payload)
+
+
+
+if (contractsError) {
+setSaving(false)
+alert('Client was saved, but contracts failed: ' + contractsError.message)
+return
+}
+
+
+
+setSaving(false)
+window.location.href = `/clients/${newClient.id}`
+}
+
+
+
+return (
+<div style={page}>
+<div style={topBrand}>
+<img src="/logo.png" alt="logo" style={logo} />
+
+
+
+<div>
+<h1 style={brandTitle}>New Member File</h1>
+<p style={brandSub}>Complete client and contract registration</p>
+</div>
+</div>
+
+
+
+<div style={shell}>
+<div style={header}>
+<div>
+<h2 style={sectionTitle}>Client Information</h2>
+<div style={goldLine} />
+<p style={muted}>Create the member record and attach contract data in one file.</p>
+</div>
+
+
+
+<button
+onClick={() => window.location.href = '/dashboard'}
+style={darkButton}
+>
+Dashboard
+</button>
+</div>
+
+
+
+<div style={formGrid}>
 <Field
-  label="Last Payment"
-  type="date"
-  value={contract.last_payment_date}
-  onChange={(v) => updateContract(index, 'last_payment_date', v)}
+label="Full Name"
+value={client.full_name}
+onChange={(v) => updateClient('full_name', v)}
+placeholder="Member full name"
 />
 
-              <Field
-                label="Current Monthly Payment"
-                value={contract.current_monthly_payment}
-                onChange={(v) => updateContract(index, 'current_monthly_payment', v)}
-              />
 
-              <Field
-                label="Annual Maintenance Increase %"
-                value={contract.annual_maintenance_increase}
-                onChange={(v) => updateContract(index, 'annual_maintenance_increase', v)}
-              />
 
-              <Field
-                label="Total Paid USD"
-                value={contract.total_paid}
-                onChange={(v) => updateContract(index, 'total_paid', v)}
-              />
-            </div>
-          </div>
-        ))}
+<Field
+label="Beneficiaries"
+value={client.beneficiaries}
+onChange={(v) => updateClient('beneficiaries', v)}
+placeholder="Example: 2"
+/>
 
-        <div style={footerActions}>
-          <button
-            onClick={() => window.location.href = '/dashboard'}
-            style={darkButton}
-          >
-            Cancel
-          </button>
 
-          <button
-            onClick={saveCompleteFile}
-            disabled={saving}
-            style={goldButton}
-          >
-            {saving ? 'Saving Complete File...' : 'Save Complete Member File'}
-          </button>
-        </div>
-      </div>
-    </div>
-  )
+
+<Field
+label="Presentations"
+value={client.prior_presentations}
+onChange={(v) => updateClient('prior_presentations', v)}
+placeholder="Example: 1"
+/>
+
+
+
+<Field
+label="Next Tier"
+value={client.next_tier}
+onChange={(v) => updateClient('next_tier', v)}
+placeholder="Example: 10000"
+/>
+
+
+
+<Field
+label="Price Per Point Increase"
+value={client.price_per_point_increase}
+onChange={(v) => setClient({...client, price_per_point_increase: v})}
+/>
+
+
+
+<Field
+label="Benefits To Add"
+value={client.benefits_to_add}
+onChange={(v) => setClient({...client, benefits_to_add: v})}
+/>
+
+
+
+<Field
+label="Certificate Date"
+type="date"
+value={client.certificate_date}
+onChange={(v) => updateClient('certificate_date', v)}
+/>
+
+
+
+<Field
+label="Price Freeze Number"
+value={client.price_freeze_number}
+onChange={(v) => updateClient('price_freeze_number', v)}
+placeholder="Example: 0.35"
+/>
+</div>
+
+
+
+<div style={divider} />
+
+
+
+<div style={sectionHeader}>
+<div>
+<h2 style={sectionTitle}>Contract Information</h2>
+<div style={goldLine} />
+<p style={muted}>Scan one or multiple equity sheets before reviewing and saving contracts.</p>
+</div>
+
+
+
+<div style={scanButtonGroup}>
+<input
+ref={equityInputRef}
+type="file"
+accept="image/*"
+capture="environment"
+onChange={handleEquityImage}
+style={{ display: 'none' }}
+/>
+
+
+
+<button onClick={openEquityScanner} style={blueButton}>
+Scan Equity
+</button>
+
+
+
+<button onClick={addContract} style={greenButton}>
+Add Contract
+</button>
+</div>
+</div>
+
+
+
+{scannedEquities.length > 0 && (
+<div style={scannedSummary}>
+<div>
+<div style={scannedTitle}>Scanned Equities</div>
+<div style={scannedSub}>
+{scannedEquities.length} equity image{scannedEquities.length === 1 ? '' : 's'} captured for review.
+</div>
+</div>
+
+
+
+<button onClick={openEquityScanner} style={smallBlueButton}>
+Scan Another Equity
+</button>
+</div>
+)}
+
+
+
+{contracts.map((contract, index) => (
+<div key={index} style={contractCard}>
+<div style={contractHeader}>
+<h3 style={contractTitle}>Contract {index + 1}</h3>
+
+
+
+{contracts.length > 1 && (
+<button
+onClick={() => removeContract(index)}
+style={redButton}
+>
+Remove
+</button>
+)}
+</div>
+
+
+
+<div style={formGrid}>
+<Field
+label="Contract Number"
+value={contract.contract_number}
+onChange={(v) => updateContract(index, 'contract_number', v)}
+/>
+
+
+
+<Field
+label="Annual Points"
+value={contract.annual_points}
+onChange={(v) => updateContract(index, 'annual_points', v)}
+/>
+
+
+
+<ReadOnlyField
+label="Total Years"
+value={contract.contract_years}
+/>
+
+
+
+<Field
+label="Purchase Date"
+type="date"
+value={contract.purchase_date}
+onChange={(v) => updateContract(index, 'purchase_date', v)}
+/>
+
+
+
+<Field
+label="Expiration Date"
+type="date"
+value={contract.expiration_date}
+onChange={(v) => updateContract(index, 'expiration_date', v)}
+/>
+
+
+
+<ReadOnlyField
+label="Years Remaining"
+value={contract.years_remaining}
+/>
+
+
+
+<ReadOnlyField
+label="Total Points Purchased"
+value={contract.total_points_purchased}
+/>
+
+
+
+<ReadOnlyField
+label="Remaining Points"
+value={contract.remaining_points}
+/>
+
+
+
+<Field
+label="Annual Maintenance Fee"
+value={contract.maintenance_fee}
+onChange={(v) => updateContract(index, 'maintenance_fee', v)}
+/>
+
+
+
+<Field
+label="Pending Balance"
+value={contract.pending_balance}
+onChange={(v) => updateContract(index, 'pending_balance', v)}
+/>
+
+
+
+<Field
+label="Interest Rate %"
+value={contract.interest_rate}
+onChange={(v) => updateContract(index, 'interest_rate', v)}
+/>
+
+
+
+<Field
+label="Last Payment"
+type="date"
+value={contract.last_payment_date}
+onChange={(v) => updateContract(index, 'last_payment_date', v)}
+/>
+
+
+
+<Field
+label="Current Monthly Payment"
+value={contract.current_monthly_payment}
+onChange={(v) => updateContract(index, 'current_monthly_payment', v)}
+/>
+
+
+
+<Field
+label="Annual Maintenance Increase %"
+value={contract.annual_maintenance_increase}
+onChange={(v) => updateContract(index, 'annual_maintenance_increase', v)}
+/>
+
+
+
+<Field
+label="Total Paid USD"
+value={contract.total_paid}
+onChange={(v) => updateContract(index, 'total_paid', v)}
+/>
+</div>
+</div>
+))}
+
+
+
+<div style={footerActions}>
+<button
+onClick={() => window.location.href = '/dashboard'}
+style={darkButton}
+>
+Cancel
+</button>
+
+
+
+<button
+onClick={saveCompleteFile}
+disabled={saving}
+style={goldButton}
+>
+{saving ? 'Saving Complete File...' : 'Save Complete Member File'}
+</button>
+</div>
+</div>
+
+
+
+{showEquityPreview && (
+<div style={overlay}>
+<div style={scanBubble}>
+<div style={scanHeader}>
+<div>
+<h2 style={scanTitle}>Equity Captured</h2>
+<div style={goldLine} />
+<p style={scanSub}>
+The equity image was captured. OCR is now reading the document text.
+</p>
+</div>
+
+
+
+<button onClick={reviewContractsFromEquity} style={closeButton}>
+×
+</button>
+</div>
+
+
+
+{equityPreviewUrl && (
+<img
+src={equityPreviewUrl}
+alt="Scanned equity preview"
+style={equityPreviewImage}
+/>
+)}
+
+
+
+<div style={ocrBox}>
+<div style={ocrTitle}>
+OCR Result
+</div>
+
+
+
+{readingEquity ? (
+<div style={ocrLoading}>
+Reading equity... please wait.
+</div>
+) : (
+<pre style={ocrText}>
+{equityOcrText || 'No OCR text available yet.'}
+</pre>
+)}
+</div>
+
+
+
+<div style={scanActions}>
+<button onClick={scanAnotherEquity} style={blueButton}>
+Scan Another Equity
+</button>
+
+
+
+<button onClick={reviewContractsFromEquity} style={goldButton}>
+Review Contracts
+</button>
+</div>
+</div>
+</div>
+)}
+</div>
+)
 }
+
+
 
 function createEmptyContract(label) {
-  return {
-    contract_label: label,
-    contract_number: '',
-    annual_points: '',
-    purchase_date: '',
-    expiration_date: '',
-    last_payment_date: '',
-    pending_balance: '',
-    interest_rate: '',
-    current_monthly_payment: '',
-    annual_maintenance_increase: '',
-    years_remaining: 0,
-    total_paid: ''
-  }
+return {
+contract_label: label,
+contract_number: '',
+annual_points: '',
+contract_years: 0,
+purchase_date: '',
+expiration_date: '',
+last_payment_date: '',
+pending_balance: '',
+interest_rate: '',
+current_monthly_payment: '',
+annual_maintenance_increase: '',
+maintenance_fee: '',
+total_points_purchased: 0,
+remaining_points: 0,
+years_remaining: 0,
+total_paid: ''
 }
+}
+
+
 
 function Field({ label, value, onChange, type = 'text', placeholder = '' }) {
-  return (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <input
-        type={type}
-        value={value ?? ''}
-        placeholder={placeholder}
-        onChange={(e) => onChange(e.target.value)}
-        style={inputStyle}
-      />
-    </div>
-  )
+return (
+<div>
+<label style={labelStyle}>{label}</label>
+<input
+type={type}
+value={value ?? ''}
+placeholder={placeholder}
+onChange={(e) => onChange(e.target.value)}
+style={inputStyle}
+/>
+</div>
+)
 }
+
+
 
 function ReadOnlyField({ label, value }) {
-  return (
-    <div>
-      <label style={labelStyle}>{label}</label>
-      <div style={readOnlyStyle}>{value || 0}</div>
-    </div>
-  )
+return (
+<div>
+<label style={labelStyle}>{label}</label>
+<div style={readOnlyStyle}>{value || 0}</div>
+</div>
+)
 }
+
+
 
 const page = {
-  minHeight: '100vh',
-  background: '#ffffff',
-  padding: 40,
-  fontFamily: 'Helvetica Neue, Arial, sans-serif'
+minHeight: '100vh',
+background: '#ffffff',
+padding: 40,
+fontFamily: 'Helvetica Neue, Arial, sans-serif'
 }
+
+
 
 const topBrand = {
-  maxWidth: 1180,
-  margin: '0 auto 28px',
-  display: 'flex',
-  alignItems: 'center',
-  gap: 24
+maxWidth: 1180,
+margin: '0 auto 28px',
+display: 'flex',
+alignItems: 'center',
+gap: 24
 }
+
+
 
 const logo = {
-  width: 170,
-  objectFit: 'contain'
+width: 170,
+objectFit: 'contain'
 }
+
+
 
 const brandTitle = {
-  margin: 0,
-  color: '#111827',
-  textTransform: 'uppercase',
-  letterSpacing: 1.5,
-  fontSize: 30
+margin: 0,
+color: '#111827',
+textTransform: 'uppercase',
+letterSpacing: 1.5,
+fontSize: 30
 }
+
+
 
 const brandSub = {
-  color: '#6b7280',
-  margin: '6px 0 0'
+color: '#6b7280',
+margin: '6px 0 0'
 }
+
+
 
 const shell = {
-  maxWidth: 1180,
-  margin: '0 auto',
-  background: '#0f172a',
-  borderRadius: 28,
-  padding: 34,
-  border: '1px solid #1e293b',
-  boxShadow: '0 24px 70px rgba(15,23,42,0.25)',
-  color: '#f9fafb'
+maxWidth: 1180,
+margin: '0 auto',
+background: '#0f172a',
+borderRadius: 28,
+padding: 34,
+border: '1px solid #1e293b',
+boxShadow: '0 24px 70px rgba(15,23,42,0.25)',
+color: '#f9fafb'
 }
+
+
 
 const header = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: 20,
-  flexWrap: 'wrap',
-  marginBottom: 28
+display: 'flex',
+justifyContent: 'space-between',
+gap: 20,
+flexWrap: 'wrap',
+marginBottom: 28
 }
+
+
 
 const sectionHeader = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  gap: 20,
-  flexWrap: 'wrap',
-  alignItems: 'flex-start',
-  marginBottom: 22
+display: 'flex',
+justifyContent: 'space-between',
+gap: 20,
+flexWrap: 'wrap',
+alignItems: 'flex-start',
+marginBottom: 22
 }
+
+
 
 const sectionTitle = {
-  margin: 0,
-  textTransform: 'uppercase',
-  letterSpacing: 1.4,
-  color: '#f9fafb'
+margin: 0,
+textTransform: 'uppercase',
+letterSpacing: 1.4,
+color: '#f9fafb'
 }
+
+
 
 const goldLine = {
-  width: 64,
-  height: 3,
-  background: '#c9a86a',
-  margin: '12px 0'
+width: 64,
+height: 3,
+background: '#c9a86a',
+margin: '12px 0'
 }
+
+
 
 const muted = {
-  color: '#9ca3af',
-  margin: 0
+color: '#9ca3af',
+margin: 0
 }
+
+
 
 const formGrid = {
-  display: 'grid',
-  gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
-  gap: 16
+display: 'grid',
+gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
+gap: 16
 }
+
+
 
 const divider = {
-  height: 1,
-  background: '#1f2937',
-  margin: '34px 0'
+height: 1,
+background: '#1f2937',
+margin: '34px 0'
 }
+
+
 
 const contractCard = {
-  background: '#111827',
-  border: '1px solid #1f2937',
-  borderRadius: 20,
-  padding: 24,
-  marginBottom: 22
+background: '#111827',
+border: '1px solid #1f2937',
+borderRadius: 20,
+padding: 24,
+marginBottom: 22
 }
+
+
 
 const contractHeader = {
-  display: 'flex',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: 20
+display: 'flex',
+justifyContent: 'space-between',
+alignItems: 'center',
+marginBottom: 20
 }
+
+
 
 const contractTitle = {
-  margin: 0,
-  color: '#c9a86a',
-  textTransform: 'uppercase',
-  letterSpacing: 1
+margin: 0,
+color: '#c9a86a',
+textTransform: 'uppercase',
+letterSpacing: 1
 }
+
+
 
 const labelStyle = {
-  display: 'block',
-  color: '#c9a86a',
-  fontSize: 12,
-  textTransform: 'uppercase',
-  letterSpacing: 1,
-  marginBottom: 7,
-  fontWeight: 'bold'
+display: 'block',
+color: '#c9a86a',
+fontSize: 12,
+textTransform: 'uppercase',
+letterSpacing: 1,
+marginBottom: 7,
+fontWeight: 'bold'
 }
+
+
 
 const inputStyle = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: 13,
-  borderRadius: 10,
-  border: '1px solid #374151',
-  background: '#111827',
-  color: '#f9fafb',
-  outline: 'none'
+width: '100%',
+boxSizing: 'border-box',
+padding: 13,
+borderRadius: 10,
+border: '1px solid #374151',
+background: '#111827',
+color: '#f9fafb',
+outline: 'none'
 }
+
+
 
 const readOnlyStyle = {
-  width: '100%',
-  boxSizing: 'border-box',
-  padding: 13,
-  borderRadius: 10,
-  border: '1px solid #374151',
-  background: '#1f2937',
-  color: '#c9a86a',
-  fontWeight: 'bold'
+width: '100%',
+boxSizing: 'border-box',
+padding: 13,
+borderRadius: 10,
+border: '1px solid #374151',
+background: '#1f2937',
+color: '#c9a86a',
+fontWeight: 'bold'
 }
+
+
 
 const footerActions = {
-  display: 'flex',
-  justifyContent: 'flex-end',
-  gap: 12,
-  flexWrap: 'wrap',
-  marginTop: 30
+display: 'flex',
+justifyContent: 'flex-end',
+gap: 12,
+flexWrap: 'wrap',
+marginTop: 30
 }
+
+
+
+const scanButtonGroup = {
+display: 'flex',
+gap: 12,
+flexWrap: 'wrap',
+alignItems: 'center'
+}
+
+
+
+const scannedSummary = {
+display: 'flex',
+justifyContent: 'space-between',
+gap: 16,
+alignItems: 'center',
+background: '#111827',
+border: '1px solid #1f2937',
+borderRadius: 18,
+padding: 16,
+marginBottom: 22
+}
+
+
+
+const scannedTitle = {
+color: '#c9a86a',
+fontWeight: 'bold',
+textTransform: 'uppercase',
+letterSpacing: 1,
+fontSize: 12
+}
+
+
+
+const scannedSub = {
+color: '#9ca3af',
+fontSize: 13,
+marginTop: 4
+}
+
+
+
+const overlay = {
+position: 'fixed',
+inset: 0,
+background: 'rgba(15,23,42,0.72)',
+backdropFilter: 'blur(7px)',
+display: 'flex',
+alignItems: 'center',
+justifyContent: 'center',
+padding: 24,
+zIndex: 9999
+}
+
+
+
+const scanBubble = {
+width: '100%',
+maxWidth: 760,
+maxHeight: '92vh',
+overflowY: 'auto',
+background: '#f8fafc',
+color: '#111827',
+borderRadius: 28,
+padding: 30,
+border: '1px solid #e5e7eb',
+boxShadow: '0 30px 90px rgba(0,0,0,0.35)'
+}
+
+
+
+const scanHeader = {
+display: 'flex',
+justifyContent: 'space-between',
+gap: 20,
+marginBottom: 20
+}
+
+
+
+const scanTitle = {
+margin: 0,
+textTransform: 'uppercase',
+letterSpacing: 1.5,
+color: '#111827'
+}
+
+
+
+const scanSub = {
+color: '#64748b',
+margin: 0,
+lineHeight: 1.5
+}
+
+
+
+const equityPreviewImage = {
+width: '100%',
+maxHeight: 520,
+objectFit: 'contain',
+borderRadius: 18,
+border: '1px solid #cbd5e1',
+background: '#0f172a',
+marginTop: 10
+}
+
+
+
+const ocrBox = {
+marginTop: 18,
+background: '#111827',
+border: '1px solid #1f2937',
+borderRadius: 18,
+padding: 16
+}
+
+
+
+const ocrTitle = {
+color: '#c9a86a',
+fontWeight: 'bold',
+textTransform: 'uppercase',
+letterSpacing: 1,
+fontSize: 12,
+marginBottom: 10
+}
+
+
+
+const ocrLoading = {
+color: '#f9fafb',
+fontWeight: 'bold',
+fontSize: 14
+}
+
+
+
+const ocrText = {
+whiteSpace: 'pre-wrap',
+wordBreak: 'break-word',
+color: '#f9fafb',
+fontSize: 12,
+lineHeight: 1.5,
+margin: 0,
+maxHeight: 260,
+overflowY: 'auto'
+}
+
+
+
+const scanActions = {
+display: 'flex',
+justifyContent: 'flex-end',
+gap: 12,
+flexWrap: 'wrap',
+marginTop: 22
+}
+
+
+
+const closeButton = {
+background: '#111827',
+color: 'white',
+border: 'none',
+width: 38,
+height: 38,
+borderRadius: 999,
+cursor: 'pointer',
+fontSize: 24
+}
+
+
 
 const darkButton = {
-  padding: '12px 16px',
-  background: '#374151',
-  color: 'white',
-  border: 'none',
-  borderRadius: 10,
-  cursor: 'pointer',
-  fontWeight: 'bold'
+padding: '12px 16px',
+background: '#374151',
+color: 'white',
+border: 'none',
+borderRadius: 10,
+cursor: 'pointer',
+fontWeight: 'bold'
 }
+
+
 
 const goldButton = {
-  padding: '12px 18px',
-  background: '#c9a86a',
-  color: '#111827',
-  border: 'none',
-  borderRadius: 10,
-  cursor: 'pointer',
-  fontWeight: 'bold'
+padding: '12px 18px',
+background: '#c9a86a',
+color: '#111827',
+border: 'none',
+borderRadius: 10,
+cursor: 'pointer',
+fontWeight: 'bold'
 }
+
+
 
 const greenButton = {
-  padding: '12px 16px',
-  background: '#16a34a',
-  color: 'white',
-  border: 'none',
-  borderRadius: 10,
-  cursor: 'pointer',
-  fontWeight: 'bold'
+padding: '12px 16px',
+background: '#16a34a',
+color: 'white',
+border: 'none',
+borderRadius: 10,
+cursor: 'pointer',
+fontWeight: 'bold'
 }
 
+
+
+const blueButton = {
+padding: '12px 16px',
+background: '#2563eb',
+color: 'white',
+border: 'none',
+borderRadius: 10,
+cursor: 'pointer',
+fontWeight: 'bold'
+}
+
+
+
+const smallBlueButton = {
+padding: '9px 13px',
+background: '#2563eb',
+color: 'white',
+border: 'none',
+borderRadius: 10,
+cursor: 'pointer',
+fontWeight: 'bold',
+fontSize: 12
+}
+
+
+
 const redButton = {
-  padding: '10px 14px',
-  background: '#dc2626',
-  color: 'white',
-  border: 'none',
-  borderRadius: 10,
-  cursor: 'pointer',
-  fontWeight: 'bold'
+padding: '10px 14px',
+background: '#dc2626',
+color: 'white',
+border: 'none',
+borderRadius: 10,
+cursor: 'pointer',
+fontWeight: 'bold'
 }

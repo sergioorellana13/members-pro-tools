@@ -1,13 +1,16 @@
 'use client'
 
 
+
 import React, { useEffect, useState } from 'react'
 import { supabase } from '@/lib/supabaseClient'
+
 
 
 export default function ContractsPage({ params }) {
 const resolvedParams = React.use(params)
 const clientId = resolvedParams.id
+
 
 
 const [client, setClient] = useState(null)
@@ -17,9 +20,11 @@ createEmptyContract(1)
 const [saving, setSaving] = useState(false)
 
 
+
 useEffect(() => {
 loadClient()
 }, [])
+
 
 
 const loadClient = async () => {
@@ -30,29 +35,36 @@ const { data, error } = await supabase
 .single()
 
 
+
 if (error) {
 alert('Error loading client: ' + error.message)
 return
 }
 
 
+
 setClient(data)
 }
+
 
 
 const calculateYearsRemaining = (expirationDate) => {
 if (!expirationDate) return 0
 
 
+
 const today = new Date()
 const expiration = new Date(expirationDate + 'T12:00:00')
+
 
 
 let years = expiration.getFullYear() - today.getFullYear()
 
 
+
 const monthDifference = expiration.getMonth() - today.getMonth()
 const dayDifference = expiration.getDate() - today.getDate()
+
 
 
 if (monthDifference < 0 || (monthDifference === 0 && dayDifference < 0)) {
@@ -60,12 +72,65 @@ years -= 1
 }
 
 
+
 return Math.max(years, 0)
 }
 
 
+
+const calculateContractYears = (purchaseDate, expirationDate) => {
+if (!purchaseDate || !expirationDate) return 0
+
+
+
+const purchase = new Date(purchaseDate + 'T12:00:00')
+const expiration = new Date(expirationDate + 'T12:00:00')
+
+
+
+let years = expiration.getFullYear() - purchase.getFullYear()
+
+
+
+const monthDifference = expiration.getMonth() - purchase.getMonth()
+const dayDifference = expiration.getDate() - purchase.getDate()
+
+
+
+if (monthDifference < 0 || (monthDifference === 0 && dayDifference < 0)) {
+years -= 1
+}
+
+
+
+return Math.max(years, 0)
+}
+
+
+
+const calculateContractTotals = (contract) => {
+const annualPoints = Number(contract.annual_points || 0)
+const contractYears = calculateContractYears(contract.purchase_date, contract.expiration_date)
+const yearsRemaining = calculateYearsRemaining(contract.expiration_date)
+const totalPointsPurchased = annualPoints * contractYears
+const remainingPoints = annualPoints * yearsRemaining
+
+
+
+return {
+...contract,
+contract_years: contractYears,
+years_remaining: yearsRemaining,
+total_points_purchased: totalPointsPurchased,
+remaining_points: remainingPoints
+}
+}
+
+
+
 const updateContract = (index, field, value) => {
 const copy = [...contracts]
+
 
 
 copy[index] = {
@@ -74,13 +139,14 @@ copy[index] = {
 }
 
 
-if (field === 'expiration_date') {
-copy[index].years_remaining = calculateYearsRemaining(value)
-}
+
+copy[index] = calculateContractTotals(copy[index])
+
 
 
 setContracts(copy)
 }
+
 
 
 const addContract = () => {
@@ -91,17 +157,21 @@ createEmptyContract(contracts.length + 1)
 }
 
 
+
 const removeContract = (index) => {
 if (contracts.length === 1) return
 setContracts(contracts.filter((_, i) => i !== index))
 }
 
 
+
 const saveContracts = async () => {
 setSaving(true)
 
 
+
 const { data: userData } = await supabase.auth.getUser()
+
 
 
 if (!userData.user) {
@@ -111,29 +181,40 @@ return
 }
 
 
+
 for (const contract of contracts) {
 if (!contract.contract_number.trim()) continue
+
+
+
+const calculatedContract = calculateContractTotals(contract)
+
 
 
 const { error } = await supabase.from('contracts').insert({
 client_id: clientId,
 seller_id: userData.user.id,
-contract_label: Number(contract.contract_label || 0),
-contract_number: contract.contract_number.trim(),
-annual_points: Number(contract.annual_points || 0),
-purchase_date: contract.purchase_date || null,
-expiration_date: contract.expiration_date || null,
-price_per_point_increase: Number(contract.price_per_point_increase || 0),
-benefits_to_add: contract.benefits_to_add || '',
-last_payment_date: contract.last_payment_date || null,
-pending_balance: Number(contract.pending_balance || 0),
-interest_rate: Number(contract.interest_rate || 0),
-current_monthly_payment: Number(contract.current_monthly_payment || 0),
-annual_maintenance_increase: Number(contract.annual_maintenance_increase || 0),
-years_remaining: calculateYearsRemaining(contract.expiration_date),
-total_paid: Number(contract.total_paid || 0),
+contract_label: Number(calculatedContract.contract_label || 0),
+contract_number: calculatedContract.contract_number.trim(),
+annual_points: Number(calculatedContract.annual_points || 0),
+purchase_date: calculatedContract.purchase_date || null,
+expiration_date: calculatedContract.expiration_date || null,
+price_per_point_increase: Number(calculatedContract.price_per_point_increase || 0),
+benefits_to_add: calculatedContract.benefits_to_add || '',
+last_payment_date: calculatedContract.last_payment_date || null,
+pending_balance: Number(calculatedContract.pending_balance || 0),
+interest_rate: Number(calculatedContract.interest_rate || 0),
+current_monthly_payment: Number(calculatedContract.current_monthly_payment || 0),
+annual_maintenance_increase: Number(calculatedContract.annual_maintenance_increase || 0),
+maintenance_fee: Number(calculatedContract.maintenance_fee || 0),
+contract_years: Number(calculatedContract.contract_years || 0),
+years_remaining: Number(calculatedContract.years_remaining || 0),
+total_points_purchased: Number(calculatedContract.total_points_purchased || 0),
+remaining_points: Number(calculatedContract.remaining_points || 0),
+total_paid: Number(calculatedContract.total_paid || 0),
 hidden_from_calendar: false
 })
+
 
 
 if (error) {
@@ -144,9 +225,11 @@ return
 }
 
 
+
 setSaving(false)
 window.location.href = `/clients/${clientId}`
 }
+
 
 
 return (
@@ -155,11 +238,13 @@ return (
 <img src="/logo.png" alt="logo" style={logo} />
 
 
+
 <div>
 <h1 style={brandTitle}>Contract Entry</h1>
 <p style={brandSub}>Add member contracts and membership expiration data</p>
 </div>
 </div>
+
 
 
 <div style={shell}>
@@ -173,6 +258,7 @@ The system calculates years remaining automatically from the expiration date.
 </div>
 
 
+
 <button
 onClick={() => window.location.href = '/dashboard'}
 style={darkButton}
@@ -182,10 +268,12 @@ Dashboard
 </div>
 
 
+
 {contracts.map((contract, index) => (
 <div key={index} style={contractCard}>
 <div style={contractHeader}>
 <h3 style={contractTitle}>Contract {index + 1}</h3>
+
 
 
 {contracts.length > 1 && (
@@ -199,6 +287,7 @@ Remove
 </div>
 
 
+
 <div style={formGrid}>
 <Field
 label="Contract Number"
@@ -207,11 +296,13 @@ onChange={(v) => updateContract(index, 'contract_number', v)}
 />
 
 
+
 <Field
 label="Annual Points"
 value={contract.annual_points}
 onChange={(v) => updateContract(index, 'annual_points', v)}
 />
+
 
 
 <Field
@@ -222,6 +313,7 @@ onChange={(v) => updateContract(index, 'purchase_date', v)}
 />
 
 
+
 <Field
 label="Expiration Date"
 type="date"
@@ -230,10 +322,33 @@ onChange={(v) => updateContract(index, 'expiration_date', v)}
 />
 
 
+
+<ReadOnlyField
+label="Total Years"
+value={contract.contract_years}
+/>
+
+
+
 <ReadOnlyField
 label="Years Remaining"
 value={contract.years_remaining}
 />
+
+
+
+<ReadOnlyField
+label="Total Points Purchased"
+value={contract.total_points_purchased}
+/>
+
+
+
+<ReadOnlyField
+label="Remaining Points"
+value={contract.remaining_points}
+/>
+
 
 
 <Field
@@ -243,11 +358,13 @@ onChange={(v) => updateContract(index, 'price_per_point_increase', v)}
 />
 
 
+
 <Field
 label="Benefits To Add"
 value={contract.benefits_to_add}
 onChange={(v) => updateContract(index, 'benefits_to_add', v)}
 />
+
 
 
 <Field
@@ -257,11 +374,13 @@ onChange={(v) => updateContract(index, 'pending_balance', v)}
 />
 
 
+
 <Field
 label="Interest Rate %"
 value={contract.interest_rate}
 onChange={(v) => updateContract(index, 'interest_rate', v)}
 />
+
 
 
 <Field
@@ -272,6 +391,7 @@ onChange={(v) => updateContract(index, 'last_payment_date', v)}
 />
 
 
+
 <Field
 label="Current Monthly Payment"
 value={contract.current_monthly_payment}
@@ -279,11 +399,21 @@ onChange={(v) => updateContract(index, 'current_monthly_payment', v)}
 />
 
 
+
 <Field
 label="Annual Maintenance Increase %"
 value={contract.annual_maintenance_increase}
 onChange={(v) => updateContract(index, 'annual_maintenance_increase', v)}
 />
+
+
+
+<Field
+label="Maintenance Fee"
+value={contract.maintenance_fee}
+onChange={(v) => updateContract(index, 'maintenance_fee', v)}
+/>
+
 
 
 <Field
@@ -296,10 +426,12 @@ onChange={(v) => updateContract(index, 'total_paid', v)}
 ))}
 
 
+
 <div style={footerActions}>
 <button onClick={addContract} style={greenButton}>
 Add Another Contract
 </button>
+
 
 
 <div style={{ display: 'flex', gap: 12 }}>
@@ -311,6 +443,7 @@ Cancel
 </button>
 
 
+
 <button onClick={saveContracts} disabled={saving} style={goldButton}>
 {saving ? 'Saving...' : 'Save Contracts'}
 </button>
@@ -320,6 +453,7 @@ Cancel
 </div>
 )
 }
+
 
 
 function createEmptyContract(label) {
@@ -336,10 +470,15 @@ pending_balance: '',
 interest_rate: '',
 current_monthly_payment: '',
 annual_maintenance_increase: '',
+maintenance_fee: '',
+contract_years: 0,
 years_remaining: 0,
+total_points_purchased: 0,
+remaining_points: 0,
 total_paid: ''
 }
 }
+
 
 
 function Field({ label, value, onChange, type = 'text' }) {
@@ -357,6 +496,7 @@ style={inputStyle}
 }
 
 
+
 function ReadOnlyField({ label, value }) {
 return (
 <div>
@@ -367,12 +507,14 @@ return (
 }
 
 
+
 const page = {
 minHeight: '100vh',
 background: '#ffffff',
 padding: 40,
 fontFamily: 'Helvetica Neue, Arial, sans-serif'
 }
+
 
 
 const topBrand = {
@@ -384,10 +526,12 @@ gap: 24
 }
 
 
+
 const logo = {
 width: 170,
 objectFit: 'contain'
 }
+
 
 
 const brandTitle = {
@@ -399,10 +543,12 @@ fontSize: 30
 }
 
 
+
 const brandSub = {
 color: '#6b7280',
 margin: '6px 0 0'
 }
+
 
 
 const shell = {
@@ -417,6 +563,7 @@ color: '#f9fafb'
 }
 
 
+
 const header = {
 display: 'flex',
 justifyContent: 'space-between',
@@ -424,6 +571,7 @@ gap: 20,
 flexWrap: 'wrap',
 marginBottom: 28
 }
+
 
 
 const sectionTitle = {
@@ -434,6 +582,7 @@ color: '#f9fafb'
 }
 
 
+
 const goldLine = {
 width: 64,
 height: 3,
@@ -442,10 +591,12 @@ margin: '12px 0'
 }
 
 
+
 const muted = {
 color: '#9ca3af',
 margin: 0
 }
+
 
 
 const contractCard = {
@@ -457,12 +608,14 @@ marginBottom: 22
 }
 
 
+
 const contractHeader = {
 display: 'flex',
 justifyContent: 'space-between',
 alignItems: 'center',
 marginBottom: 20
 }
+
 
 
 const contractTitle = {
@@ -473,11 +626,13 @@ letterSpacing: 1
 }
 
 
+
 const formGrid = {
 display: 'grid',
 gridTemplateColumns: 'repeat(auto-fit, minmax(230px, 1fr))',
 gap: 16
 }
+
 
 
 const labelStyle = {
@@ -489,6 +644,7 @@ letterSpacing: 1,
 marginBottom: 7,
 fontWeight: 'bold'
 }
+
 
 
 const inputStyle = {
@@ -503,6 +659,7 @@ outline: 'none'
 }
 
 
+
 const readOnlyStyle = {
 width: '100%',
 boxSizing: 'border-box',
@@ -515,6 +672,7 @@ fontWeight: 'bold'
 }
 
 
+
 const footerActions = {
 display: 'flex',
 justifyContent: 'space-between',
@@ -522,6 +680,7 @@ gap: 12,
 flexWrap: 'wrap',
 marginTop: 28
 }
+
 
 
 const darkButton = {
@@ -535,6 +694,7 @@ fontWeight: 'bold'
 }
 
 
+
 const goldButton = {
 padding: '12px 18px',
 background: '#c9a86a',
@@ -546,6 +706,7 @@ fontWeight: 'bold'
 }
 
 
+
 const greenButton = {
 padding: '12px 16px',
 background: '#16a34a',
@@ -555,6 +716,7 @@ borderRadius: 10,
 cursor: 'pointer',
 fontWeight: 'bold'
 }
+
 
 
 const redButton = {
