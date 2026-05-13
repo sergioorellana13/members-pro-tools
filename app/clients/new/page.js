@@ -408,6 +408,22 @@ normalizeMoneyOcr(netSaleMatch[1])
 )
 }
 
+// NEW SALE FALLBACK
+const salesTypeMatch = text.match(/Sales Type:\s*([A-ZÁÉÍÓÚÑ\s]+)/i)
+const salesType = salesTypeMatch?.[1]?.trim()?.toUpperCase() || ''
+
+if (
+salesType.includes('NUEVA') &&
+netSaleMatch?.[1]
+) {
+const netSalePrice = cleanNumber(
+normalizeMoneyOcr(netSaleMatch[1])
+)
+
+currentPurchase = netSalePrice
+totalInvestment = netSalePrice
+}
+
 // fallback
 if (!totalInvestment && currentPurchase) {
 totalInvestment = currentPurchase
