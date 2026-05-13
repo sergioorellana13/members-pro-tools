@@ -124,8 +124,8 @@ const searchProjectionYears = searchIsRightToUseLevel
 
 
 const searchProjectionText = searchIsRightToUseLevel
-? `All Club and Real Estate contracts (${numberFormat(nextTier)} pts - 42,240 pts) contracts from 2019-2026 capped at 2%, avg. Increase of 1.2% (Mexican natural inflation rate)`
-: `All VPA contracts (1000 pts - ${numberFormat(rangeMax)}) contracts from 2015-2026 capped at 7%, avg. Increase of 5%`
+? `All Club and Real Estate contracts (${numberFormat(nextTier)} pts - 42,240 pts) issued between 2019 and 2026, subject to a maximum increase cap of 2% with a historical average increase of 1.2% (based on Mexico's inflation rate)`
+: `All VPA contracts (1000 pts - ${numberFormat(rangeMax)}) issued between 2015 and 2026, subject to a maximum increase cap of 7% with a historical average increase of 5%`
 
 
 const generateComparisonProjection = () => {
@@ -282,8 +282,8 @@ lineHeight: 1.45
 }}
 >
 {contracts.some(c => Number(c.annual_maintenance_increase) === 1.2)
-? `All Club and Real Estate contracts (${numberFormat(nextTier)} pts - 42,240 pts) contracts from 2019-2026 capped at 2%, avg. Increase of 1.2% (Mexican natural inflation rate)`
-: `All VPA contracts (1000 pts - ${numberFormat(rangeMax)}) contracts from 2015-2026 capped at 7%, avg. Increase of 5%`
+? `All Club and Real Estate contracts (${numberFormat(nextTier)} pts - 42,240 pts) issued between 2019 and 2026, subject to a maximum increase cap of 2% with a historical average increase of 1.2% (based on Mexico's inflation rate)`
+: `All VPA contracts (1000 pts - ${numberFormat(rangeMax)}) issued between 2015 and 2026, subject to a maximum increase cap of 7% with a historical average increase of 5%`
 }
 </p>
 </div>

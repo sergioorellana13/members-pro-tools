@@ -89,6 +89,8 @@ logger: () => {}
 
 
 setEquityOcrText(result?.data?.text || 'No text detected.')
+const text = result?.data?.text || ''
+parseEquityData(text)
 } catch (error) {
 setEquityOcrText('OCR failed: ' + error.message)
 } finally {
@@ -109,12 +111,421 @@ openEquityScanner()
 }, 150)
 }
 
+const parseDateToInput = (rawDate) => {
+if (!rawDate) return ''
 
+const months = {
+ene: '01',
+feb: '02',
+mar: '03',
+abr: '04',
+may: '05',
+jun: '06',
+jul: '07',
+ago: '08',
+sep: '09',
+oct: '10',
+nov: '11',
+dic: '12'
+}
+
+const clean = rawDate.toLowerCase().replace(/\./g, '')
+
+const parts = clean.split('/')
+
+if (parts.length !== 3) return ''
+
+const day = parts[0].padStart(2, '0')
+const month = months[parts[1]?.substring(0,3)] || '01'
+const year = parts[2]
+
+return `${year}-${month}-${day}`
+}
+
+const normalizeMoneyOcr = (value) => {
+if (!value) return ''
+
+let clean = String(value).trim()
+
+const weirdMoneyMatch = clean.match(/^([0-9]{1,3})\.([0-9]{3})\.([0-9]{2})$/)
+
+if (weirdMoneyMatch) {
+return `${weirdMoneyMatch[1]}${weirdMoneyMatch[2]}.${weirdMoneyMatch[3]}`
+}
+
+clean = clean.replace(/,/g, '')
+
+return clean
+}
+
+const parseMonthDayYearToInput = (rawDate) => {
+if (!rawDate) return ''
+
+const months = {
+ene: '01',
+feb: '02',
+mar: '03',
+abr: '04',
+may: '05',
+jun: '06',
+jul: '07',
+ago: '08',
+sep: '09',
+oct: '10',
+nov: '11',
+dic: '12'
+}
+
+const clean = rawDate.toLowerCase().replace(/\./g, '')
+const parts = clean.split('/')
+
+if (parts.length !== 3) return ''
+
+const month = months[parts[0]?.substring(0,3)] || '01'
+const day = parts[1].padStart(2, '0')
+const year = parts[2]
+
+return `${year}-${month}-${day}`
+}
+
+const calculateEstimatedPendingBalance = (originalBalance, terms, firstPaymentDate) => {
+const balance = cleanNumber(originalBalance)
+const totalTerms = cleanNumber(terms)
+
+if (!balance || !totalTerms || !firstPaymentDate) return balance
+
+const start = new Date(firstPaymentDate + 'T12:00:00')
+const today = new Date()
+
+let monthsPaid =
+(today.getFullYear() - start.getFullYear()) * 12 +
+(today.getMonth() - start.getMonth())
+
+if (today.getDate() >= start.getDate()) {
+monthsPaid += 1
+}
+
+monthsPaid = Math.max(monthsPaid, 0)
+
+const capitalPerMonth = balance / totalTerms
+const estimatedCapitalPaid = capitalPerMonth * monthsPaid
+const estimatedBalance = balance - estimatedCapitalPaid
+
+return Math.max(estimatedBalance, 0).toFixed(2)
+}
+
+
+const parseEquityData = (text) => {
+if (!text) return
+
+const copyClient = { ...client }
+const copyContracts = [...contracts]
+
+const recoPreviewMatch = text.match(/RECO:\s*([0-9]{2}-[0-9]+)/i)
+const recoPreview = recoPreviewMatch?.[1] || ''
+
+let targetContractIndex = 0
+
+if (recoPreview && !recoPreview.startsWith('35-')) {
+const existingIndex = copyContracts.findIndex(
+(c) => c.contract_number === recoPreview
+)
+
+targetContractIndex =
+existingIndex >= 0 ? existingIndex : copyContracts.length
+}
+
+if (!copyContracts[targetContractIndex]) {
+copyContracts[targetContractIndex] = createEmptyContract(targetContractIndex + 1)
+}
+
+const contract = { ...copyContracts[targetContractIndex] }
+
+const cleanPurchaserName = (value) => {
+if (!value) return ''
+
+const cleaned = String(value)
+.replace(/Status:.*/i, '')
+.replace(/RECO:.*/i, '')
+.replace(/Address.*/i, '')
+.replace(/City:.*/i, '')
+.replace(/Home Phone:.*/i, '')
+.replace(/\*+/g, '')
+.trim()
+
+if (!cleaned) return ''
+if (cleaned.toLowerCase().includes('purchaser')) return ''
+if (cleaned.length < 3) return ''
+
+return cleaned
+}
+
+const purchasers = []
+
+const primaryMatch = text.match(/Primary Purchaser:\s*(.*)/i)
+const secondMatch = text.match(/Second Purchaser:\s*(.*)/i)
+const thirdMatch = text.match(/Third Purchaser:\s*(.*)/i)
+const fourthMatch = text.match(/Fourth Purchaser:\s*(.*)/i)
+
+const primary = cleanPurchaserName(primaryMatch?.[1])
+const second = cleanPurchaserName(secondMatch?.[1])
+const third = cleanPurchaserName(thirdMatch?.[1])
+const fourth = cleanPurchaserName(fourthMatch?.[1])
+
+if (primary) purchasers.push(primary)
+if (second) purchasers.push(second)
+if (third) purchasers.push(third)
+if (fourth) purchasers.push(fourth)
+
+if (purchasers.length > 0) {
+if (targetContractIndex === 0 && purchasers.length > 0) {
+copyClient.full_name = purchasers.join(' | ')
+}
+}
+
+const recoMatch = text.match(/RECO:\s*([0-9]{2}-[0-9]+)/i)
+
+if (recoMatch?.[1]) {
+contract.contract_number = recoMatch[1]
+}
+
+const pointsLineMatch = text.match(
+/Floating[\s\S]{0,120}?Annual[\s\S]{0,40}?([0-9,]{3,6})\s+(?:[0-9]{4}|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i
+)
+
+if (pointsLineMatch?.[1]) {
+contract.annual_points = String(
+cleanNumber(normalizeMoneyOcr(pointsLineMatch[1]))
+)
+}
+
+const soldDateMatch = text.match(/Date Sold:\s*([0-9]{2}\/[a-z]{3}\.\/[0-9]{4})/i)
+
+if (soldDateMatch?.[1]) {
+contract.purchase_date = parseDateToInput(soldDateMatch[1])
+}
+
+const expYearMatch = text.match(/Exp\.\s*Year:\s*([0-9]{4})/i)
+
+if (expYearMatch?.[1]) {
+contract.expiration_date = `${expYearMatch[1]}-12-31`
+}
+
+const interestMatch = text.match(/Interest Rate:\s*([0-9.]+)%/i)
+
+if (interestMatch?.[1]) {
+contract.interest_rate = interestMatch[1]
+}
+
+const balanceMatch = text.match(/Balance To Be Financed:\s*([0-9,]+\.[0-9]+)/i)
+
+const termsMatch = text.match(/Terms:\s*([0-9]+)/i)
+
+const firstPaymentMatch = text.match(/Due Date:\s*([a-z]{3}\.?\/[0-9]{2}\/[0-9]{4})/i)
+
+if (balanceMatch?.[1]) {
+const originalFinanced = normalizeMoneyOcr(balanceMatch[1])
+const terms = termsMatch?.[1] || ''
+const firstPaymentDate = firstPaymentMatch?.[1] ? parseMonthDayYearToInput(firstPaymentMatch[1]) : ''
+
+contract.pending_balance = calculateEstimatedPendingBalance(
+originalFinanced,
+terms,
+firstPaymentDate
+)
+}
+
+const paymentMatch = text.match(/Principal:\s*([0-9,]+\.[0-9]+)/i)
+
+if (paymentMatch?.[1]) {
+contract.current_monthly_payment = normalizeMoneyOcr(paymentMatch[1])
+}
+
+const purchasePriceMatch = text.match(/Purchase\s*(?:Price|Bice)\s*[:\s]*([0-9,.\s]+)/i)
+
+const additionalPriceMatch = text.match(/Additional\s*Price\s*[:\s]*([0-9,.\s]+)/i)
+
+const mpsaBlockMatch = text.match(/M\.?P\.?S\.?A\.?.*$/is)
+const mpsaBlock = mpsaBlockMatch?.[0] || text
+const creditMatch = mpsaBlock.match(/Credit\s*[:\s]*([0-9,.\s]+)/i) 
+
+const existingMembershipMatch = text.match(/Existing\s*Membership\s*[:\s]*([0-9,.\s]+)/i)
+
+const newPurchaseMatch = text.match(/New\s*Purchase\s*[:\s]*([0-9,.\s]+)/i)
+
+const netSaleMatch = text.match(/Net\s*Sale\s*Price\s*[:\s]*([0-9,.\s]+)/i)
+
+let currentPurchase = 0
+let totalInvestment = 0
+
+// PRIORITY 1
+if (purchasePriceMatch?.[1]) {
+totalInvestment = cleanNumber(
+normalizeMoneyOcr(purchasePriceMatch[1])
+)
+}
+
+// PRIORITY 2
+if (additionalPriceMatch?.[1]) {
+const additional = cleanNumber(
+normalizeMoneyOcr(additionalPriceMatch[1])
+)
+
+currentPurchase = additional
+
+if (creditMatch?.[1]) {
+const credit = cleanNumber(
+normalizeMoneyOcr(creditMatch[1])
+)
+
+totalInvestment = additional + credit
+}
+}
+
+// PRIORITY 3
+if (
+existingMembershipMatch?.[1] &&
+newPurchaseMatch?.[1]
+) {
+const existingMembership = cleanNumber(
+normalizeMoneyOcr(existingMembershipMatch[1])
+)
+
+const newPurchase = cleanNumber(
+normalizeMoneyOcr(newPurchaseMatch[1])
+)
+
+currentPurchase = newPurchase
+
+totalInvestment =
+existingMembership + newPurchase
+}
+
+// PRIORITY 4
+if (!currentPurchase && netSaleMatch?.[1]) {
+currentPurchase = cleanNumber(
+normalizeMoneyOcr(netSaleMatch[1])
+)
+}
+
+// fallback
+if (!totalInvestment && currentPurchase) {
+totalInvestment = currentPurchase
+}
+
+if (
+currentPurchase > 0 &&
+totalInvestment > 0 &&
+totalInvestment < currentPurchase
+) {
+totalInvestment = currentPurchase
+}
+
+if (
+currentPurchase > 0 &&
+!totalInvestment &&
+purchasePriceMatch?.[1]
+) {
+totalInvestment = cleanNumber(
+normalizeMoneyOcr(purchasePriceMatch[1])
+)
+}
+
+contract.current_purchase_amount =
+currentPurchase > 0
+? currentPurchase.toFixed(2)
+: ''
+
+contract.total_investment =
+totalInvestment > 0
+? totalInvestment.toFixed(2)
+: ''
+
+contract.total_paid =
+contract.total_investment
+
+const lastPaymentMatch = text.match(/Last Payment Date:\s*([a-z]{3}\.?\/[0-9]{2}\/[0-9]{4})/i)
+
+if (lastPaymentMatch?.[1]) {
+contract.last_payment_date = parseMonthDayYearToInput(lastPaymentMatch[1])
+}
+
+const purchaseDate = contract.purchase_date
+const expirationDate = contract.expiration_date
+
+if (purchaseDate && expirationDate) {
+contract.contract_years = calculateContractYears(
+purchaseDate,
+expirationDate
+)
+}
+
+if (expirationDate) {
+contract.years_remaining = calculateYearsRemaining(expirationDate)
+}
+
+const annualPoints = cleanNumber(contract.annual_points)
+const contractYears = cleanNumber(contract.contract_years)
+const yearsRemaining = cleanNumber(contract.years_remaining)
+
+contract.total_points_purchased =
+annualPoints * contractYears
+
+contract.remaining_points =
+annualPoints * yearsRemaining
+
+const maintenanceCalc = annualPoints * 0.525
+
+contract.maintenance_fee =
+maintenanceCalc > 0
+? maintenanceCalc.toFixed(2)
+: ''
+
+copyContracts[targetContractIndex] = contract
+
+setClient(copyClient)
+setContracts(copyContracts)
+}
 
 const reviewContractsFromEquity = () => {
+const parsed = parseEquityData(equityOcrText)
+
+if (!parsed) {
+setShowEquityPreview(false)
+setEquityPreviewUrl('')
+return
+}
+
+const reco = parsed.contract?.contract_number || ''
+
+const shouldCreateNewContract =
+!reco.startsWith('35-')
+
+if (shouldCreateNewContract) {
+setContracts((prev) => [
+...prev,
+{
+...createEmptyContract(prev.length + 1),
+...parsed.contract
+}
+])
+} else {
+setContracts((prev) => {
+const copy = [...prev]
+
+copy[0] = {
+...copy[0],
+...parsed.contract
+}
+
+return copy
+})
+}
+
 setShowEquityPreview(false)
 setEquityPreviewUrl('')
 }
+
 
 
 
@@ -343,7 +754,9 @@ maintenance_fee: Number(contract.maintenance_fee || 0),
 total_points_purchased: Number(contract.total_points_purchased || 0),
 remaining_points: Number(contract.remaining_points || 0),
 years_remaining: calculateYearsRemaining(contract.expiration_date),
-total_paid: Number(contract.total_paid || 0),
+total_paid: Number(contract.total_investment || 0),
+current_purchase_amount: Number(contract.current_purchase_amount || 0),
+total_investment: Number(contract.total_investment || 0),
 hidden_from_calendar: false
 }))
 
@@ -666,9 +1079,15 @@ onChange={(v) => updateContract(index, 'annual_maintenance_increase', v)}
 
 
 <Field
-label="Total Paid USD"
-value={contract.total_paid}
-onChange={(v) => updateContract(index, 'total_paid', v)}
+label="Current Purchase Amount"
+value={contract.current_purchase_amount}
+onChange={(v) => updateContract(index, 'current_purchase_amount', v)}
+/>
+
+<Field
+label="Total Investment"
+value={contract.total_investment}
+onChange={(v) => updateContract(index, 'total_investment', v)}
 />
 </div>
 </div>
@@ -786,7 +1205,9 @@ maintenance_fee: '',
 total_points_purchased: 0,
 remaining_points: 0,
 years_remaining: 0,
-total_paid: ''
+total_paid: '',
+current_purchase_amount: '',
+total_investment: ''
 }
 }
 

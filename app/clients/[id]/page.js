@@ -229,16 +229,86 @@ export default function ClientPage({ params }) {
         })}
 
         {contracts.length > 1 && (
-          <div style={summaryBox}>
-            <h3 style={summaryTitle}>Combined Contract Summary</h3>
+<div style={summaryBox}>
+<h3 style={summaryTitle}>Combined Contract Summary</h3>
 
-            <div style={grid}>
-              <Metric label="Total Annual Points" value={numberFormat(totalAnnualPoints)} />
-              <Metric label="Current Maintenance Fees" value={money(totalMaintenanceFees)} />
-              <Metric label="Promissory Note Balance" value={money(totalPromissoryNoteBalance)} />
-            </div>
-          </div>
-        )}
+<div style={grid}>
+<Metric
+label="Total Annual Points"
+value={numberFormat(
+contracts.reduce(
+(sum, c) => sum + (Number(c.annual_points) || 0),
+0
+)
+)}
+/>
+
+<Metric
+label="Total Points Purchased"
+value={numberFormat(
+contracts.reduce((sum, c) => {
+const annual = Number(c.annual_points) || 0
+const years = Number(c.contract_years) || 0
+return sum + annual * years
+}, 0)
+)}
+/>
+
+<Metric
+label="Remaining Points"
+value={numberFormat(
+contracts.reduce((sum, c) => {
+const annual = Number(c.annual_points) || 0
+const yearsRemaining = Number(c.years_remaining) || 0
+return sum + annual * yearsRemaining
+}, 0)
+)}
+/>
+
+<Metric
+label="Total Investment To Date"
+value={money(
+contracts.reduce(
+(sum, c) => sum + (Number(c.total_paid) || 0),
+0
+)
+)}
+/>
+
+<Metric
+label="Current Maintenance Fees"
+value={money(
+contracts.reduce((sum, c) => {
+const annual = Number(c.annual_points) || 0
+return sum + annual * 0.525
+}, 0)
+)}
+/>
+
+<Metric
+label="Pending Loan Balance"
+value={money(
+contracts.reduce(
+(sum, c) => sum + (Number(c.pending_balance) || 0),
+0
+)
+)}
+/>
+
+<Metric
+label="Estimated Promissory Note Exposure"
+value={money(
+contracts.reduce(
+(sum, c) => sum + calculatePromissory(c),
+0
+)
+)}
+/>
+</div>
+</div>
+)}
+
+
 
         <button
           style={projectionButton}
