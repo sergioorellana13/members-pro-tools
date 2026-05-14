@@ -119,28 +119,33 @@ ene: '01',
 feb: '02',
 mar: '03',
 abr: '04',
+apr: '04',
 may: '05',
 jun: '06',
 jul: '07',
 ago: '08',
+aug: '08',
 sep: '09',
 oct: '10',
 nov: '11',
-dic: '12'
+dic: '12',
+dec: '12'
 }
 
-const clean = rawDate.toLowerCase().replace(/\./g, '')
-
+const clean = String(rawDate).toLowerCase().replace(/\./g, '').trim()
 const parts = clean.split('/')
 
 if (parts.length !== 3) return ''
 
 const day = parts[0].padStart(2, '0')
-const month = months[parts[1]?.substring(0,3)] || '01'
+const month = months[parts[1]?.substring(0,3)] || ''
 const year = parts[2]
+
+if (!month || !year) return ''
 
 return `${year}-${month}-${day}`
 }
+
 
 const normalizeMoneyOcr = (value) => {
 if (!value) return ''
@@ -153,10 +158,14 @@ if (weirdMoneyMatch) {
 return `${weirdMoneyMatch[1]}${weirdMoneyMatch[2]}.${weirdMoneyMatch[3]}`
 }
 
-clean = clean.replace(/,/g, '')
+clean = clean
+.replace(/[^0-9.,]/g, '')
+.replace(/,/g, '')
+.trim()
 
 return clean
 }
+
 
 const parseMonthDayYearToInput = (rawDate) => {
 if (!rawDate) return ''
@@ -166,27 +175,34 @@ ene: '01',
 feb: '02',
 mar: '03',
 abr: '04',
+apr: '04',
 may: '05',
 jun: '06',
 jul: '07',
 ago: '08',
+aug: '08',
 sep: '09',
 oct: '10',
 nov: '11',
-dic: '12'
+dic: '12',
+dec: '12',
+jan: '01'
 }
 
-const clean = rawDate.toLowerCase().replace(/\./g, '')
+const clean = String(rawDate).toLowerCase().replace(/\./g, '').trim()
 const parts = clean.split('/')
 
 if (parts.length !== 3) return ''
 
-const month = months[parts[0]?.substring(0,3)] || '01'
+const month = months[parts[0]?.substring(0,3)] || ''
 const day = parts[1].padStart(2, '0')
 const year = parts[2]
 
+if (!month || !year) return ''
+
 return `${year}-${month}-${day}`
 }
+
 
 const calculateEstimatedPendingBalance = (originalBalance, terms, firstPaymentDate) => {
 const balance = cleanNumber(originalBalance)
@@ -348,11 +364,15 @@ break
 
 
 
-const soldDateMatch = text.match(/Date Sold:\s*([0-9]{2}\/[a-z]{3}\.\/[0-9]{4})/i)
+// PRIORITY: purchase date from Date Sold
+// DO NOT DELETE
+
+const soldDateMatch = text.match(/Date Sold:\s*([0-9]{1,2}\/[a-z]{3}\.?\/[0-9]{4})/i)
 
 if (soldDateMatch?.[1]) {
 contract.purchase_date = parseDateToInput(soldDateMatch[1])
 }
+
 
 const expYearMatch = text.match(/Exp\.\s*Year:\s*([0-9]{4})/i)
 
@@ -360,17 +380,20 @@ if (expYearMatch?.[1]) {
 contract.expiration_date = `${expYearMatch[1]}-12-31`
 }
 
-const interestMatch = text.match(/Interest Rate:\s*([0-9.]+)%/i)
+// PRIORITY: loan terms and interest
+// DO NOT DELETE
+
+const interestMatch = text.match(/Interest\s*Rate:\s*([0-9.]+)\s*%/i)
 
 if (interestMatch?.[1]) {
 contract.interest_rate = interestMatch[1]
 }
 
-const balanceMatch = text.match(/Balance To Be Financed:\s*([0-9,]+\.[0-9]+)/i)
+const balanceMatch = text.match(/Balance\s*To\s*Be\s*Financed:\s*([0-9,]+\.[0-9]+)/i)
 
 const termsMatch = text.match(/Terms:\s*([0-9]+)/i)
 
-const firstPaymentMatch = text.match(/Due Date:\s*([a-z]{3}\.?\/[0-9]{2}\/[0-9]{4})/i)
+const firstPaymentMatch = text.match(/Due Date:\s*([a-z]{3}\.?\/[0-9]{1,2}\/[0-9]{4})/i)
 
 if (balanceMatch?.[1]) {
 const originalFinanced = normalizeMoneyOcr(balanceMatch[1])
@@ -402,7 +425,11 @@ const existingMembershipMatch = text.match(/Existing\s*Membership\s*[:\s]*([0-9,
 
 const newPurchaseMatch = text.match(/New\s*Purchase\s*[:\s]*([0-9,.\s]+)/i)
 
-const netSaleMatch = text.match(/Net\s*Sale\s*Price\s*[:\s]*([0-9,.\s]+)/i)
+// PRIORITY: net sale price fallback
+// DO NOT DELETE
+
+const netSaleMatch = text.match(/Net\s*Sale\s*Price\s*[:\s]*([0-9,]+\.[0-9]{2})/i)
+
 
 let currentPurchase = 0
 let totalInvestment = 0
@@ -509,7 +536,10 @@ totalInvestment > 0
 contract.total_paid =
 contract.total_investment
 
-const lastPaymentMatch = text.match(/Last Payment Date:\s*([a-z]{3}\.?\/[0-9]{2}\/[0-9]{4})/i)
+// PRIORITY: last payment date
+// DO NOT DELETE
+
+const lastPaymentMatch = text.match(/Last Payment Date:\s*([a-z]{3}\.?\/[0-9]{1,2}\/[0-9]{4})/i)
 
 if (lastPaymentMatch?.[1]) {
 contract.last_payment_date = parseMonthDayYearToInput(lastPaymentMatch[1])
