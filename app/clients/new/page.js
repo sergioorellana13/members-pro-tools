@@ -289,15 +289,64 @@ if (recoMatch?.[1]) {
 contract.contract_number = recoMatch[1]
 }
 
-const pointsLineMatch = text.match(
-/Floating[\s\S]{0,120}?Annual[\s\S]{0,40}?([0-9,]{3,6})\s+(?:[0-9]{4}|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i
+// PRIORITY: annual points extraction
+// DO NOT DELETE
+// Handles multiple OCR layouts from Vallarta, Cabo, Cancun and legacy forms
+
+const pointsPatterns = [
+
+/Points[\s:]*([0-9,]{3,})/i,
+
+/Annual\s+EXH\s+A\s+([0-9,]{3,})/i,
+
+/Annual.*?([0-9,]{3,})\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i,
+
+/Floating.*?Annual.*?([0-9,]{3,})/i,
+
+// NEW MEMBER / NUEVA contracts
+/Annual[\s\S]{0,120}?([0-9,]{3,6})[\s]*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i,
+
+// OCR damaged layouts
+/Floating[\s\S]{0,120}?EXH[\s\S]{0,40}?([0-9,]{3,6})/i,
+
+// layout where points appear before maintenance fee
+/([0-9,]{3,6})\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\S]{0,40}?[0-9,]+\.[0-9]{2}/i,
+
+// generic annual capture fallback
+/Annual[\s\S]{0,80}?([0-9,]{3,6})/i
+
+]
+
+// PRIORITY: annual points parser
+// DO NOT DELETE
+// NO EJECUTABLE outside parseEquityData
+
+for (const pattern of pointsPatterns) {
+
+const match = text.match(pattern)
+
+if (match?.[1]) {
+
+const parsedPoints = cleanNumber(
+normalizeMoneyOcr(match[1])
 )
 
-if (pointsLineMatch?.[1]) {
-contract.annual_points = String(
-cleanNumber(normalizeMoneyOcr(pointsLineMatch[1]))
-)
+if (
+parsedPoints >= 100 &&
+parsedPoints <= 500000
+) {
+
+contract.annual_points = String(parsedPoints)
+
+break
+
 }
+
+}
+
+}
+
+
 
 const soldDateMatch = text.match(/Date Sold:\s*([0-9]{2}\/[a-z]{3}\.\/[0-9]{4})/i)
 
@@ -490,12 +539,31 @@ annualPoints * contractYears
 contract.remaining_points =
 annualPoints * yearsRemaining
 
-const maintenanceCalc = annualPoints * 0.525
+// FALLBACK maintenance fee parser
+// NO EJECUTABLE outside parseEquityData
+
+const maintenanceMatch = text.match(
+/Maint\.\s*Fee[\s\S]{0,40}?([0-9,]+\.[0-9]{2})/i
+)
+
+if (maintenanceMatch?.[1]) {
+
+contract.maintenance_fee =
+normalizeMoneyOcr(maintenanceMatch[1])
+
+}
+
+// FALLBACK automatic maintenance calculation
+// DO NOT DELETE
+
+if (!contract.maintenance_fee) {
 
 contract.maintenance_fee =
 maintenanceCalc > 0
 ? maintenanceCalc.toFixed(2)
 : ''
+
+}
 
 copyContracts[targetContractIndex] = contract
 
