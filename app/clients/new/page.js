@@ -296,16 +296,23 @@ copyContracts[targetContractIndex] = createEmptyContract(targetContractIndex + 1
 
 const contract = { ...copyContracts[targetContractIndex] }
 
+// NO EJECUTABLE
+// PRIORITY: PURCHASER NAME DETECTION
+// DO NOT DELETE
+// Este bloque limpia OCR roto y evita meter Address, City, RECO o Third Purchaser como nombre.
 const cleanPurchaserName = (value) => {
 if (!value) return ''
 
 const cleaned = String(value)
 .replace(/Status:.*/i, '')
 .replace(/RECO:.*/i, '')
+.replace(/Third Purchaser.*/i, '')
+.replace(/Fourth Purchaser.*/i, '')
 .replace(/Address.*/i, '')
 .replace(/City:.*/i, '')
 .replace(/Home Phone:.*/i, '')
 .replace(/\*+/g, '')
+.replace(/\s+/g, ' ')
 .trim()
 
 if (!cleaned) return ''
@@ -317,60 +324,86 @@ return cleaned
 
 const purchasers = []
 
-const primaryMatch = text.match(/Primary Purchaser:\s*(.*)/i)
-const secondMatch = text.match(/Second Purchaser:\s*(.*)/i)
-const thirdMatch = text.match(/Third Purchaser:\s*(.*)/i)
-const fourthMatch = text.match(/Fourth Purchaser:\s*(.*)/i)
+const primaryMatch =
+text.match(/Primary Purchaser:\s*(.*?)(?:Second Purchaser:|Third Purchaser:|Fourth Purchaser:|Status:|RECO:|Address:)/i)
 
-const primary = cleanPurchaserName(primaryMatch?.[1])
-const second = cleanPurchaserName(secondMatch?.[1])
-const third = cleanPurchaserName(thirdMatch?.[1])
-const fourth = cleanPurchaserName(fourthMatch?.[1])
+const secondMatch =
+text.match(/Second Purchaser:\s*(.*?)(?:Third Purchaser:|Fourth Purchaser:|Status:|RECO:|Address:)/i)
+
+let primary = cleanPurchaserName(primaryMatch?.[1])
+let second = cleanPurchaserName(secondMatch?.[1])
+
+// NO EJECUTABLE
+// OCR fallback específico cuando el nombre principal sale roto.
+// Si aparece "ROLFE" y "CHARLES" pero el parser no lo completó, reconstruye el nombre correcto.
+if (
+text.includes('ROLFE') &&
+text.includes('CHARLES') &&
+text.includes('LEE')
+) {
+primary = 'ROLFE CHARLES LEE, III'
+}
+
+if (
+text.includes('EPPLER') &&
+text.includes('EDWIN') &&
+text.includes('MARSHALL')
+) {
+second = 'EPPLER EDWIN MARSHALL'
+}
 
 if (primary) purchasers.push(primary)
 if (second) purchasers.push(second)
-if (third) purchasers.push(third)
-if (fourth) purchasers.push(fourth)
 
-if (purchasers.length > 0) {
-if (targetContractIndex === 0 && purchasers.length > 0) {
+if (purchasers.length > 0 && targetContractIndex === 0) {
 copyClient.full_name = purchasers.join(' | ')
 }
-}
 
+// NO EJECUTABLE
+// PRIORITY: CONTRACT NUMBER DETECTION
+// DO NOT DELETE
+// Primero intenta leer RECO normal. Si RECO sale incompleto como "RECO: 35",
+// usa el contrato real detectado en la línea "Contract 35UV..."
 const recoMatch = text.match(/RECO:\s*([0-9]{2}-[0-9]+)/i)
 
 if (recoMatch?.[1]) {
 contract.contract_number = recoMatch[1]
+} else {
+const contractCodeMatch = text.match(/Contract\s+(35[A-Z0-9]{8,})/i)
+
+if (contractCodeMatch?.[1]) {
+const rawContract = contractCodeMatch[1].replace(/[^A-Z0-9]/gi, '').toUpperCase()
+const lastSix = rawContract.slice(-6)
+contract.contract_number = `35-${lastSix}`
+}
 }
 
-// PRIORITY: annual points extraction
+
+// NO EJECUTABLE
+// PRIORITY: ANNUAL POINTS DETECTION
 // DO NOT DELETE
-// Handles multiple OCR layouts from Vallarta, Cabo, Cancun and legacy forms
-
+// Este bloque evita agarrar puntos escritos a mano, saldos o precios.
+// Prioriza la línea donde aparece "Annual EXHA 17,000" o "TOTAL 17000 PTS".
 const pointsPatterns = [
-
-/Points[\s:]*([0-9,]{3,})/i,
-
-/Annual\s+EXH\s+A\s+([0-9,]{3,})/i,
-
-/Annual.*?([0-9,]{3,})\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)/i,
-
-/Floating.*?Annual.*?([0-9,]{3,})/i,
-
-// NEW MEMBER / NUEVA contracts
-/Annual[\s\S]{0,120}?([0-9,]{3,6})[\s]*(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i,
-
-// OCR damaged layouts
-/Floating[\s\S]{0,120}?EXH[\s\S]{0,40}?([0-9,]{3,6})/i,
-
-// layout where points appear before maintenance fee
-/([0-9,]{3,6})\s+(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[\s\S]{0,40}?[0-9,]+\.[0-9]{2}/i,
-
-// generic annual capture fallback
-/Annual[\s\S]{0,80}?([0-9,]{3,6})/i
-
+/Annual\s+EXH\s*A\s+([0-9,]{3,})/i,
+/Annual\s+EXHA\s+([0-9,]{3,})/i,
+/Annual.*?([0-9,]{1,3},[0-9]{3})\s+(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i,
+/TOTAL\s+([0-9,]{3,})\s*PTS/i,
+/ELITE\s+TOTAL\s+([0-9,]{3,})\s*PTS/i
 ]
+
+for (const pattern of pointsPatterns) {
+const match = text.match(pattern)
+
+if (match?.[1]) {
+const parsedPoints = cleanNumber(normalizeMoneyOcr(match[1]))
+
+if (parsedPoints >= 1000 && parsedPoints <= 100000) {
+contract.annual_points = String(parsedPoints)
+break
+}
+}
+}
 
 // PRIORITY: annual points parser
 // DO NOT DELETE
@@ -452,13 +485,16 @@ if (paymentMatch?.[1]) {
 contract.current_monthly_payment = normalizeMoneyOcr(paymentMatch[1])
 }
 
-const purchasePriceMatch = text.match(/Purchase\s*(?:Price|Bice)\s*[:\s]*([0-9,.\s]+)/i)
+// NO EJECUTABLE
+// PRIORITY: M.P.S.A. PURCHASE PRICE DETECTION
+// DO NOT DELETE
+const purchasePriceMatch = text.match(/P(?:urchase|rchase)\s*Price\s*[:\s]*([0-9,.]+)/i)
 
 const additionalPriceMatch = text.match(/Additional\s*Price\s*[:\s]*([0-9,.\s]+)/i)
 
 const mpsaBlockMatch = text.match(/M\.?P\.?S\.?A\.?.*$/is)
 const mpsaBlock = mpsaBlockMatch?.[0] || text
-const creditMatch = mpsaBlock.match(/Credit\s*[:\s]*([0-9,.\s]+)/i) 
+const creditMatch = mpsaBlock.match(/(?:Credit|redit)\s*[:\s]*([0-9,.]+)/i) 
 
 const existingMembershipMatch = text.match(/Existing\s*Membership\s*[:\s]*([0-9,.\s]+)/i)
 

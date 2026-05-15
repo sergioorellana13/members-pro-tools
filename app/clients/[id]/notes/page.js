@@ -11,6 +11,8 @@ export default function NotesPage({ params }) {
   const [profile, setProfile] = useState(null)
   const [notes, setNotes] = useState([])
   const [input, setInput] = useState('')
+  const [editingNoteId, setEditingNoteId] = useState(null)
+  const [editingNoteText, setEditingNoteText] = useState('')
   const [hasChanges, setHasChanges] = useState(false)
   const [showSaleModal, setShowSaleModal] = useState(false)
   const [savingSale, setSavingSale] = useState(false)
@@ -111,6 +113,33 @@ export default function NotesPage({ params }) {
     setNotes(notes.filter((note) => note.id !== noteId))
     setHasChanges(true)
   }
+
+const isScannerNote = (note) => {
+return String(note.author_name || '').toLowerCase().includes('recorp')
+}
+
+const startEditingScannerNote = (note) => {
+if (!isScannerNote(note)) return
+setEditingNoteId(note.id)
+setEditingNoteText(note.text || '')
+}
+
+const saveScannerNoteEdit = () => {
+if (!editingNoteId) return
+
+setNotes(notes.map((note) => {
+if (note.id !== editingNoteId) return note
+
+return {
+...note,
+text: editingNoteText
+}
+}))
+
+setEditingNoteId(null)
+setEditingNoteText('')
+setHasChanges(true)
+}
 
   const saveNotesAndExit = async () => {
     const { error } = await supabase
@@ -471,7 +500,31 @@ if (insertedSale?.id) {
                 {note.author_name ? ` · ${note.author_name}` : ''}
               </div>
 
-              <div style={noteText}>{note.text}</div>
+              {editingNoteId === note.id ? (
+<textarea
+value={editingNoteText}
+autoFocus
+onChange={(e) => setEditingNoteText(e.target.value)}
+onBlur={saveScannerNoteEdit}
+style={{
+...textarea,
+marginBottom: 0,
+minHeight: 140,
+background: '#111827',
+border: '1px solid #c9a86a'
+}}
+/>
+) : (
+<div
+onClick={() => startEditingScannerNote(note)}
+style={{
+...noteText,
+cursor: isScannerNote(note) ? 'text' : 'default'
+}}
+>
+{note.text}
+</div>
+)}
 
               <button onClick={() => deleteNote(note.id)} style={deleteNoteButton}>
                 Delete note
