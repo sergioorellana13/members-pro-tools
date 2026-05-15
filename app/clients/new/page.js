@@ -230,6 +230,45 @@ const estimatedBalance = balance - estimatedCapitalPaid
 return Math.max(estimatedBalance, 0).toFixed(2)
 }
 
+// PRIORITY: OCR note helpers
+// DO NOT DELETE
+// NO EJECUTABLE outside helper section
+
+const formatNoteDateFromInput = (dateValue) => {
+if (!dateValue) return new Date().toLocaleDateString('en-US', {
+year: 'numeric',
+month: 'long',
+day: 'numeric'
+})
+
+return new Date(dateValue + 'T12:00:00').toLocaleDateString('en-US', {
+year: 'numeric',
+month: 'long',
+day: 'numeric'
+})
+}
+
+const extractEquityFooterNote = (text) => {
+if (!text) return ''
+
+const remarksMatch = text.match(/Remarks:[\s\S]*$/i)
+
+if (remarksMatch?.[0]) {
+return remarksMatch[0]
+.replace(/\s{2,}/g, ' ')
+.trim()
+}
+
+const saleCenterMatch = text.match(/(?:Puerto Vallarta|Cabo San Lucas|Cancun|Loreto)[\s\S]*$/i)
+
+if (saleCenterMatch?.[0]) {
+return saleCenterMatch[0]
+.replace(/\s{2,}/g, ' ')
+.trim()
+}
+
+return ''
+}
 
 const parseEquityData = (text) => {
 if (!text) return
@@ -523,11 +562,6 @@ normalizeMoneyOcr(purchasePriceMatch[1])
 )
 }
 
-contract.current_purchase_amount =
-currentPurchase > 0
-? currentPurchase.toFixed(2)
-: ''
-
 contract.total_investment =
 totalInvestment > 0
 ? totalInvestment.toFixed(2)
@@ -595,6 +629,21 @@ maintenanceCalc > 0
 ? maintenanceCalc.toFixed(2)
 : ''
 
+}
+
+// PRIORITY: equity footer note extraction
+// DO NOT DELETE
+// NO EJECUTABLE outside parseEquityData
+
+const equityFooterNote = extractEquityFooterNote(text)
+
+if (equityFooterNote) {
+const recoPrefix = String(contract.contract_number || '')
+.split('-')[0] || 'Corp'
+
+contract.ocr_note = equityFooterNote
+contract.ocr_note_author = `ReCorp-${recoPrefix}`
+contract.ocr_note_created_at = formatNoteDateFromInput(contract.purchase_date)
 }
 
 copyContracts[targetContractIndex] = contract
@@ -813,6 +862,18 @@ window.location.href = '/'
 return
 }
 
+// PRIORITY: prepare automatic equity notes
+// DO NOT DELETE
+// NO EJECUTABLE outside saveCompleteFile
+
+const equityNotes = contracts
+.filter((contract) => contract.ocr_note && contract.ocr_note.trim())
+.map((contract) => ({
+id: crypto.randomUUID(),
+text: contract.ocr_note.trim(),
+author_name: contract.ocr_note_author || 'ReCorp',
+created_at: contract.ocr_note_created_at || formatNoteDateFromInput(contract.purchase_date)
+}))
 
 
 const { data: newClient, error: clientError } = await supabase
@@ -826,6 +887,7 @@ price_per_point_increase: Number(client.price_per_point_increase || 0),
 benefits_to_add: client.benefits_to_add || '',
 certificate_date: client.certificate_date || null,
 price_freeze_number: Number(client.price_freeze_number || 0.35),
+notes: equityNotes,
 seller_id: userData.user.id
 })
 .select()
@@ -871,7 +933,6 @@ total_points_purchased: Number(contract.total_points_purchased || 0),
 remaining_points: Number(contract.remaining_points || 0),
 years_remaining: calculateYearsRemaining(contract.expiration_date),
 total_paid: Number(contract.total_investment || 0),
-current_purchase_amount: Number(contract.current_purchase_amount || 0),
 total_investment: Number(contract.total_investment || 0),
 hidden_from_calendar: false
 }))
@@ -1193,13 +1254,6 @@ onChange={(v) => updateContract(index, 'annual_maintenance_increase', v)}
 />
 
 
-
-<Field
-label="Current Purchase Amount"
-value={contract.current_purchase_amount}
-onChange={(v) => updateContract(index, 'current_purchase_amount', v)}
-/>
-
 <Field
 label="Total Investment"
 value={contract.total_investment}
@@ -1322,7 +1376,6 @@ total_points_purchased: 0,
 remaining_points: 0,
 years_remaining: 0,
 total_paid: '',
-current_purchase_amount: '',
 total_investment: ''
 }
 }
