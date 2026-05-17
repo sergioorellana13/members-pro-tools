@@ -213,12 +213,12 @@ worksheet.
 
 <div style={{
 maxHeight: 110,
-overflow: 'hidden'
+overflow: 'auto'
 }}
 >
 <strong>Included Rights:</strong><br />
 {client?.benefits_to_add ? (
-<ul style={{ marginTop: 6, paddingLeft: 18, maxHeight: 78, overflowY: 'auto', paddingRight: 6 }}>
+<ul style={{ marginTop: 6, paddingLeft: 18, paddingRight: 6 }}>
 {client.benefits_to_add.split(',').map((benefit, index) => (
 <li key={index}>{benefit.trim()}</li>
 ))}
