@@ -324,7 +324,9 @@ fontFamily: 'Georgia, Times New Roman, serif'
 
 const certificate = {
 width: 816,
-height: 1056,
+minHeight: 1056,
+height: 'auto',
+paddingBottom: 140,
 margin: '0 auto',
 background: '#f7f1df',
 padding: 34,
