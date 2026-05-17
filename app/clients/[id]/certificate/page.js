@@ -211,10 +211,14 @@ worksheet.
 {money(newMaintenance)}
 </div>
 
-<div>
+<div style={{
+maxHeight: 110,
+overflow: 'hidden'
+}}
+>
 <strong>Included Rights:</strong><br />
 {client?.benefits_to_add ? (
-<ul style={{ marginTop: 6, paddingLeft: 18 }}>
+<ul style={{ marginTop: 6, paddingLeft: 18, maxHeight: 78, overflowY: 'auto', paddingRight: 6 }}>
 {client.benefits_to_add.split(',').map((benefit, index) => (
 <li key={index}>{benefit.trim()}</li>
 ))}
@@ -447,7 +451,10 @@ display: 'grid',
 gridTemplateColumns: '1fr 1fr',
 gap: 12,
 fontSize: 13.5,
-lineHeight: 1.42
+lineHeight: 1.42,
+alignItems: 'start',
+minHeight: 150,
+maxHeight: 150
 }
 
 const bottomSection = {
