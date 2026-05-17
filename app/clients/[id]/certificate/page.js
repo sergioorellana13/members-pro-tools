@@ -117,7 +117,7 @@ unit: 'px',
 format: [816, 1056],
 orientation: 'portrait'
 },
-pagebreak: { mode: ['avoid-all'] }
+pagebreak: { mode: [] }
 })
 .from(element)
 .save()
@@ -211,7 +211,7 @@ worksheet.
 {money(newMaintenance)}
 </div>
 
-<div>
+<div style= {{marginTop: -40}}>
 <strong>Included Rights:</strong><br />
 {client?.benefits_to_add ? (
 <ul style={{ marginTop: 6, paddingLeft: 18, fontSize: 12.5, lineHeight: 1.25 }}>
@@ -324,8 +324,7 @@ fontFamily: 'Georgia, Times New Roman, serif'
 
 const certificate = {
 width: 816,
-minHeight: 1056,
-height: 'auto',
+height: 1056,
 paddingBottom: 140,
 margin: '0 auto',
 background: '#f7f1df',
@@ -333,7 +332,7 @@ padding: 34,
 border: '8px double #b8965a',
 position: 'relative',
 color: '#1f2937',
-overflow: 'visible',
+overflow: 'hidden',
 boxSizing: 'border-box'
 }
 
@@ -435,7 +434,7 @@ background:
 'linear-gradient(135deg, rgba(255,255,255,0.72), rgba(247,241,223,0.96))',
 padding: '12px 16px 10px',
 marginBottom: 16,
-minHeight: 190,
+minHeight: 165,
 boxSizing: 'border-box'
 }
 
@@ -458,7 +457,7 @@ marginTop: -4
 
 const bottomSection = {
 marginTop: 18,
-height: 285,
+height: 245,
 display: 'flex',
 flexDirection: 'column',
 justifyContent: 'space-between'
