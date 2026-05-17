@@ -433,26 +433,27 @@ const tierBox = {
 border: '2px solid #b8965a',
 background:
 'linear-gradient(135deg, rgba(255,255,255,0.72), rgba(247,241,223,0.96))',
-padding: 16,
-marginBottom: 18,
-minHeight: 230,
+padding: '12px 16px 10px',
+marginBottom: 16,
+minHeight: 190,
 boxSizing: 'border-box'
 }
 
 const tierTitle = {
-fontSize: 26,
+fontSize: 24,
 fontWeight: 'bold',
 color: '#b8965a',
-marginBottom: 10
+marginBottom: 6
 }
 
 const tierGrid = {
 display: 'grid',
-gridTemplateColumns: '1fr 1fr',
+gridTemplateColumns: '0.95fr 1.05fr',
 gap: 12,
-fontSize: 12.5,
-lineHeight: 1.32,
-alignItems: 'start'
+fontSize: 11.6,
+lineHeight: 1.22,
+alignItems: 'start',
+marginTop: -4
 }
 
 const bottomSection = {
