@@ -211,14 +211,10 @@ worksheet.
 {money(newMaintenance)}
 </div>
 
-<div style={{
-maxHeight: 110,
-overflow: 'auto'
-}}
->
+<div>
 <strong>Included Rights:</strong><br />
 {client?.benefits_to_add ? (
-<ul style={{ marginTop: 6, paddingLeft: 18, paddingRight: 6 }}>
+<ul style={{ marginTop: 6, paddingLeft: 18, fontSize: 12.5, lineHeight: 1.25 }}>
 {client.benefits_to_add.split(',').map((benefit, index) => (
 <li key={index}>{benefit.trim()}</li>
 ))}
@@ -436,7 +432,9 @@ border: '2px solid #b8965a',
 background:
 'linear-gradient(135deg, rgba(255,255,255,0.72), rgba(247,241,223,0.96))',
 padding: 16,
-marginBottom: 22
+marginBottom: 18,
+minHeight: 230,
+boxSizing: 'border-box'
 }
 
 const tierTitle = {
@@ -450,11 +448,9 @@ const tierGrid = {
 display: 'grid',
 gridTemplateColumns: '1fr 1fr',
 gap: 12,
-fontSize: 13.5,
-lineHeight: 1.42,
-alignItems: 'start',
-minHeight: 150,
-maxHeight: 150
+fontSize: 12.5,
+lineHeight: 1.32,
+alignItems: 'start'
 }
 
 const bottomSection = {
