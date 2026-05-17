@@ -117,7 +117,7 @@ unit: 'px',
 format: [816, 1056],
 orientation: 'portrait'
 },
-pagebreak: { mode: [] }
+pagebreak: { mode: ['avoid-all'] }
 })
 .from(element)
 .save()
@@ -333,7 +333,7 @@ padding: 34,
 border: '8px double #b8965a',
 position: 'relative',
 color: '#1f2937',
-overflow: 'hidden',
+overflow: 'visible',
 boxSizing: 'border-box'
 }
 
