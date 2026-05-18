@@ -678,8 +678,8 @@ const recoPrefix = String(contract.contract_number || '')
 .split('-')[0] || 'Corp'
 
 contract.ocr_note = equityFooterNote
-contract.ocr_note_author = `ReCorp-${recoPrefix}`
-contract.ocr_note_created_at = formatNoteDateFromInput(client.purchase_date)
+if (!contract.ocr_note_author) {contract.ocr_note_author = `ReCorp-${recoPrefix}`}
+if (!contract.ocr_note_created_at) {contract.ocr_note_created_at = formatNoteDateFromInput(contract.purchase_date || client.purchase_date)}
 }
 
 copyContracts[targetContractIndex] = contract
