@@ -547,8 +547,15 @@ fontWeight: 'bold'
 <textarea
 value={editingNoteText}
 autoFocus
-onChange={(e) => setEditingNoteText(e.target.value)}
-onBlur={saveScannerNoteEdit}
+onChange={(e) => {
+setEditingNoteText(e.target.value)
+setNotes(notes.map((n) =>
+n.id === note.id
+? { ...n, text: e.target.value }
+: n
+))
+setHasChanges(true)
+}}
 style={{
 ...textarea,
 marginBottom: 0,
