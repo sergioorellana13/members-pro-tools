@@ -494,13 +494,56 @@ if (insertedSale?.id) {
           )}
 
           {notes.map((note) => (
-            <div key={note.id} style={noteBubble}>
-              <div style={noteDate}>
-                {note.created_at}
-                {note.author_name ? ` · ${note.author_name}` : ''}
-              </div>
+<div key={note.id} style={noteBubble}>
 
-              {editingNoteId === note.id ? (
+{editingNoteId === note.id ? (
+<>
+<input
+type="text"
+value={note.created_at || ''}
+onChange={(e) => {
+setNotes(notes.map((n) =>
+n.id === note.id
+? { ...n, created_at: e.target.value }
+: n
+))
+setHasChanges(true)
+}}
+style={{
+width: '100%',
+marginBottom: 8,
+padding: 10,
+borderRadius: 10,
+border: '1px solid #c9a86a',
+background: '#111827',
+color: 'white',
+fontWeight: 'bold'
+}}
+/>
+
+<input
+type="text"
+value={note.author_name || ''}
+onChange={(e) => {
+setNotes(notes.map((n) =>
+n.id === note.id
+? { ...n, author_name: e.target.value }
+: n
+))
+setHasChanges(true)
+}}
+style={{
+width: '100%',
+marginBottom: 10,
+padding: 10,
+borderRadius: 10,
+border: '1px solid #c9a86a',
+background: '#111827',
+color: 'white',
+fontWeight: 'bold'
+}}
+/>
+
 <textarea
 value={editingNoteText}
 autoFocus
@@ -514,7 +557,14 @@ background: '#111827',
 border: '1px solid #c9a86a'
 }}
 />
+</>
 ) : (
+<>
+<div style={noteDate}>
+{note.created_at}
+{note.author_name ? ` · ${note.author_name}` : ''}
+</div>
+
 <div
 onClick={() => startEditingScannerNote(note)}
 style={{
@@ -524,13 +574,15 @@ cursor: isScannerNote(note) ? 'text' : 'default'
 >
 {note.text}
 </div>
+</>
 )}
 
-              <button onClick={() => deleteNote(note.id)} style={deleteNoteButton}>
-                Delete note
-              </button>
-            </div>
-          ))}
+<button onClick={() => deleteNote(note.id)} style={deleteNoteButton}>
+Delete note
+</button>
+
+</div>
+))}
         </div>
 
         <textarea
