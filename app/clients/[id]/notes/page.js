@@ -114,12 +114,7 @@ export default function NotesPage({ params }) {
     setHasChanges(true)
   }
 
-const isScannerNote = (note) => {
-return String(note.author_name || '').toLowerCase().includes('recorp')
-}
-
-const startEditingScannerNote = (note) => {
-if (!isScannerNote(note)) return
+const startEditingNote = (note) => {
 setEditingNoteId(note.id)
 setEditingNoteText(note.text || '')
 }
@@ -573,10 +568,10 @@ border: '1px solid #c9a86a'
 </div>
 
 <div
-onClick={() => startEditingScannerNote(note)}
+onClick={() => startEditingNote(note)}
 style={{
 ...noteText,
-cursor: isScannerNote(note) ? 'text' : 'default'
+cursor: 'text'
 }}
 >
 {note.text}
