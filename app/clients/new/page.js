@@ -629,15 +629,78 @@ if (expirationDate) {
 contract.years_remaining = calculateYearsRemaining(expirationDate)
 }
 
+// PRIORITY: ODD / EVEN DETECTION
+// DO NOT DELETE
+
+const usageOddMatch =
+text.match(/Usage\\s+.*?Odd/i)
+
+const usageEvenMatch =
+text.match(/Usage\\s+.*?Even/i)
+
+if (usageOddMatch) {
+contract.use_frequency = 'odd'
+}
+
+if (usageEvenMatch) {
+contract.use_frequency = 'even'
+}
+
+if (!usageOddMatch && !usageEvenMatch) {
+contract.use_frequency = 'annual'
+}
+
+
 const annualPoints = cleanNumber(contract.annual_points)
 const contractYears = cleanNumber(contract.contract_years)
 const yearsRemaining = cleanNumber(contract.years_remaining)
+
+if (
+contract.use_frequency === 'odd' ||
+contract.use_frequency === 'even'
+) {
+
+const eoYearData =
+calculateEveryOtherYearData({
+purchaseDate: contract.purchase_date,
+expirationDate: contract.expiration_date,
+frequency: contract.use_frequency,
+annualPoints
+})
+
+contract.first_use_date =
+eoYearData.firstUseDate
+
+contract.total_uses =
+eoYearData.totalUses
+
+contract.remaining_uses =
+eoYearData.remainingUses
+
+contract.total_points_purchased =
+eoYearData.totalPointsPurchased
+
+contract.remaining_points =
+eoYearData.remainingPoints
+
+} else {
+
+contract.first_use_date =
+contract.purchase_date
+
+contract.total_uses =
+contractYears
+
+contract.remaining_uses =
+yearsRemaining
 
 contract.total_points_purchased =
 annualPoints * contractYears
 
 contract.remaining_points =
 annualPoints * yearsRemaining
+
+}
 
 // FALLBACK maintenance fee parser
 // NO EJECUTABLE outside parseEquityData
@@ -786,6 +849,72 @@ return Math.max(years, 0)
 }
 
 
+const calculateEveryOtherYearData = ({
+purchaseDate,
+expirationDate,
+frequency,
+annualPoints
+}) => {
+
+const purchaseYear =
+new Date(purchaseDate + 'T12:00:00').getFullYear()
+
+const expirationYear =
+new Date(expirationDate + 'T12:00:00').getFullYear()
+
+let firstUseYear = purchaseYear
+
+
+if (frequency === 'odd') {
+
+if (purchaseYear % 2 === 0) {
+firstUseYear = purchaseYear + 1
+}
+
+}
+
+
+if (frequency === 'even') {
+
+if (purchaseYear % 2 !== 0) {
+firstUseYear = purchaseYear + 1
+}
+
+}
+
+
+const currentYear = new Date().getFullYear()
+
+let totalUses = 0
+let remainingUses = 0
+
+
+for (
+let year = firstUseYear;
+year <= expirationYear;
+year += 2
+) {
+
+totalUses += 1
+
+if (year >= currentYear) {
+remainingUses += 1
+}
+
+}
+
+
+return {
+firstUseDate: `${firstUseYear}-01-01`,
+totalUses,
+remainingUses,
+totalPointsPurchased:
+annualPoints * totalUses,
+remainingPoints:
+annualPoints * remainingUses
+}
+
+}
 
 const cleanNumber = (value) => {
 if (value === null || value === undefined) return 0
@@ -1412,7 +1541,12 @@ total_points_purchased: 0,
 remaining_points: 0,
 years_remaining: 0,
 total_paid: '',
-total_investment: ''
+total_investment: '',
+
+use_frequency:'annual',
+first_use_date:'',
+total_uses: 0,
+remaining_uses: 0
 }
 }
 
