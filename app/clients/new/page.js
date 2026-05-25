@@ -647,10 +647,14 @@ contract.years_remaining = calculateYearsRemaining(expirationDate)
 // DO NOT DELETE
 
 const usageOddMatch =
-text.match(/Usage\\s+.*?Odd/i)
+text.match(/\bOdd\s+EXHA\b/i) ||
+text.match(/\bOdd\s+RS\b/i) ||
+text.match(/\bOdd\b/i)
 
 const usageEvenMatch =
-text.match(/Usage\\s+.*?Even/i)
+text.match(/\bEven\s+EXHA\b/i) ||
+text.match(/\bEven\s+RS\b/i) ||
+text.match(/\bEven\b/i)
 
 if (usageOddMatch) {
 contract.use_frequency = 'odd'
@@ -1146,6 +1150,10 @@ maintenance_fee: Number(contract.maintenance_fee || 0),
 total_points_purchased: Number(contract.total_points_purchased || 0),
 remaining_points: Number(contract.remaining_points || 0),
 years_remaining: calculateYearsRemaining(contract.expiration_date),
+use_frequency: contract.use_frequency || 'annual',
+first_use_date: contract.first_use_date || null,
+total_uses: Number(contract.total_uses || 0),
+remaining_uses: Number(contract.remaining_uses || 0),
 total_paid: Number(contract.total_investment || 0),
 total_investment: Number(contract.total_investment || 0),
 hidden_from_calendar: false
