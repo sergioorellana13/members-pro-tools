@@ -385,11 +385,25 @@ contract.contract_number = `35-${lastSix}`
 // Este bloque evita agarrar puntos escritos a mano, saldos o precios.
 // Prioriza la línea donde aparece "Annual EXHA 17,000" o "TOTAL 17000 PTS".
 const pointsPatterns = [
-/Annual\s+EXH\s*A\s+([0-9,]{3,})/i,
-/Annual\s+EXHA\s+([0-9,]{3,})/i,
-/Annual.*?([0-9,]{1,3},[0-9]{3})\s+(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i,
-/TOTAL\s+([0-9,]{3,})\s*PTS/i,
-/ELITE\s+TOTAL\s+([0-9,]{3,})\s*PTS/i
+
+/Annual\\s+EXH\\s*A\\s+([0-9,]{3,})/i,
+
+/Annual\\s+EXHA\\s+([0-9,]{3,})/i,
+
+/Annual.*?([0-9,]{1,3},[0-9]{3})\\s+(?:ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)/i,
+
+/TOTAL\\s+([0-9,]{3,})\\s*PTS/i,
+
+/ELITE\\s+TOTAL\\s+([0-9,]{3,})\\s*PTS/i,
+
+/Odd\\s+EXHA\\s+([0-9,]{1,3}(?:,[0-9]{3})*)/i,
+
+/Even\\s+EXHA\\s+([0-9,]{1,3}(?:,[0-9]{3})*)/i,
+
+/EXHA\\s+Odd\\s+EXHA\\s+([0-9,]{1,3}(?:,[0-9]{3})*)/i,
+
+/EXHA\\s+Even\\s+EXHA\\s+([0-9,]{1,3}(?:,[0-9]{3})*)/i
+
 ]
 
 for (const pattern of pointsPatterns) {
@@ -971,8 +985,43 @@ const yearsRemaining = cleanNumber(copy[index].years_remaining)
 
 
 
-copy[index].total_points_purchased = annualPoints * contractYears
-copy[index].remaining_points = annualPoints * yearsRemaining
+if (
+copy[index].use_frequency === 'odd' ||
+copy[index].use_frequency === 'even'
+) {
+
+const eoYearData =
+calculateEveryOtherYearData({
+purchaseDate: copy[index].purchase_date,
+expirationDate: copy[index].expiration_date,
+frequency: copy[index].use_frequency,
+annualPoints
+})
+
+copy[index].first_use_date =
+eoYearData.firstUseDate
+
+copy[index].total_uses =
+eoYearData.totalUses
+
+copy[index].remaining_uses =
+eoYearData.remainingUses
+
+copy[index].total_points_purchased =
+eoYearData.totalPointsPurchased
+
+copy[index].remaining_points =
+eoYearData.remainingPoints
+
+} else {
+
+copy[index].total_points_purchased =
+annualPoints * contractYears
+
+copy[index].remaining_points =
+annualPoints * yearsRemaining
+
+}
 
 
 
