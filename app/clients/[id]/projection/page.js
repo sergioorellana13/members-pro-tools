@@ -95,7 +95,7 @@ const years = Number(contract.years_remaining) || 0
 const increase = Number(contract.annual_maintenance_increase) || 0
 const base = (Number(contract.annual_points) || 0) * 0.525
 
-const usageType = String(contract.usage_frequency || 'annual').toLowerCase()
+const usageType = String(contract.use_frequency || 'annual').toLowerCase()
 
 let rows = []
 
