@@ -95,16 +95,34 @@ const years = Number(contract.years_remaining) || 0
 const increase = Number(contract.annual_maintenance_increase) || 0
 const base = (Number(contract.annual_points) || 0) * 0.525
 
+const usageType = String(contract.usage_type || 'annual').toLowerCase()
 
 let rows = []
 
+const currentYear = new Date().getFullYear()
 
 for (let i = 0; i < years; i++) {
-const year = new Date().getFullYear() + i
+
+const year = currentYear + i
+
 const value = base * Math.pow(1 + increase / 100, i)
+
+if (usageType === 'annual') {
+rows.push({ year, value })
+continue
+}
+
+const isOddYear = year % 2 !== 0
+const isEvenYear = year % 2 === 0
+
+if (
+(usageType === 'odd' && isOddYear) ||
+(usageType === 'even' && isEvenYear)
+) {
 rows.push({ year, value })
 }
 
+}
 
 return rows
 }
