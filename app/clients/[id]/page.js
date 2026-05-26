@@ -182,15 +182,39 @@ export default function ClientPage({ params }) {
 
         {contracts.map((c) => {
           const annualPoints = Number(c.annual_points) || 0
-          const contractYears = Number(c.contract_years) || 0
-          const yearsRemaining = Number(c.years_remaining) || 0
-          const totalPaid = Number(c.total_paid) || 0
-          const priorPresentations = Number(client?.prior_presentations) || 0
 
-          const totalPointsPurchased = annualPoints * contractYears
-          const remainingPoints = annualPoints * yearsRemaining
-          const maintenanceFee = annualPoints * 0.525
-          const promissoryNoteBalance = calculatePromissory(c)
+const isEveryOtherYear =
+c.use_frequency === 'odd' ||
+c.use_frequency === 'even'
+
+const contractYears = isEveryOtherYear
+? Number(c.total_uses || 0)
+: Number(c.contract_years) || 0
+
+const yearsRemaining = isEveryOtherYear
+? Number(c.remaining_uses || 0)
+: Number(c.years_remaining) || 0
+
+const totalPaid = Number(c.total_paid) || 0
+const priorPresentations = Number(client?.prior_presentations) || 0
+
+const totalPointsPurchased =
+Number(c.total_points_purchased || 0)
+
+const remainingPoints =
+Number(c.remaining_points || 0)
+
+const maintenanceFee = annualPoints * 0.525
+
+const promissoryNoteBalance = calculatePromissory(c)
+
+const usageLabel =
+c.use_frequency === 'odd'
+? 'EVERY OTHER YEAR · ODD'
+: c.use_frequency === 'even'
+? 'EVERY OTHER YEAR · EVEN'
+: 'ANNUAL'
+
 
           const originalPricePerPoint =
             totalPointsPurchased > 0 ? totalPaid / totalPointsPurchased : 0
@@ -205,17 +229,33 @@ export default function ClientPage({ params }) {
                 <div>
                   <h3 style={contractTitle}>Contract #{c.contract_number}</h3>
                   <p style={contractMeta}>
-                    Purchase Date: {c.purchase_date || 'N/A'} · Years Remaining:{' '}
-                    {yearsRemaining}
-                  </p>
+Purchase Date: {c.purchase_date || 'N/A'} ·{' '}
+
+{isEveryOtherYear
+? `Remaining Uses: ${yearsRemaining}`
+: `Years Remaining: ${yearsRemaining}`}
+
+{' · '}
+
+{usageLabel}
+</p>
                 </div>
 
                 <div style={pointsBadge}>
-                  {numberFormat(annualPoints)} annual pts
-                </div>
+{numberFormat(annualPoints)} pts · {usageLabel}
+</div>
               </div>
 
               <div style={grid}>
+                <Metric
+label={isEveryOtherYear ? 'Total Uses' : 'Total Years'}
+value={contractYears}
+/>
+
+<Metric
+label={isEveryOtherYear ? 'Remaining Uses' : 'Years Remaining'}
+value={yearsRemaining}
+/>
                 <Metric label="Total Points Purchased" value={numberFormat(totalPointsPurchased)} />
                 <Metric label="Remaining Points" value={numberFormat(remainingPoints)} />
                 <Metric label="Investment to date" value={money(totalPaid)} />
