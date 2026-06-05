@@ -109,10 +109,6 @@ if (sellers.length === 1) return net * 0.70
 if (sellers.length === 2) return (net * 0.80) / 2
 if (sellers.length === 3) return (net * 0.80) / 3
 
-if (profile?.role === 'manager' || profile?.role === 'admin') {
-return net
-}
-
 return 0
 }
 
@@ -210,9 +206,11 @@ date.getFullYear() === year && date.getMonth() === month
 const isQTour = (contract) => {
 return !contract.tour_type || contract.tour_type === 'Q'
 }
-const monthlySales = sales.filter((sale) =>
-isSameMonth(new Date(sale.created_at))
-)
+const monthlySales = sales.filter((sale) => {
+const created = new Date(sale.created_at)
+return created.getFullYear() === year && created.getMonth() === month
+})
+
 const monthlyFullDownVolume = monthlySales
 .filter((sale) => sale.full_down)
 .reduce((sum, sale) => sum + getAssignedVolume(sale), 0)
