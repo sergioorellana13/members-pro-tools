@@ -206,10 +206,20 @@ date.getFullYear() === year && date.getMonth() === month
 const isQTour = (contract) => {
 return !contract.tour_type || contract.tour_type === 'Q'
 }
-const monthlySales = sales.filter((sale) => {
+const monthlySalesRaw = sales.filter((sale) => {
 const created = new Date(sale.created_at)
-return created.getFullYear() === year && created.getMonth() === month
+
+return (
+created.getFullYear() === year &&
+created.getMonth() === month
+)
 })
+
+const monthlySales = Array.from(
+new Map(
+monthlySalesRaw.map((sale) => [sale.client_id, sale])
+).values()
+)
 
 const monthlyFullDownVolume = monthlySales
 .filter((sale) => sale.full_down)
@@ -245,20 +255,20 @@ const monthlyClosingPercentage =
 monthlyTourCount > 0 ? (monthlySaleCount / monthlyTourCount) * 100 : 0
 const monthlyEfficiency =
 monthlyTourCount > 0 ? monthlyTotalAssignedVolume / monthlyTourCount : 0
-const yearFullDownVolume = sales
+const yearSales = Array.from(
+new Map(
+sales.map((sale) => [sale.client_id, sale])
+).values()
+)
+
+const yearFullDownVolume = yearSales
 .filter((sale) => sale.full_down)
 .reduce((sum, sale) => sum + getAssignedVolume(sale), 0)
-const yearPenderVolume = sales
+
+const yearPenderVolume = yearSales
 .filter((sale) => sale.pender)
 .reduce((sum, sale) => sum + getAssignedVolume(sale), 0)
-const manualYearQs = statAdjustments.reduce(
-(sum, item) => sum + Number(item.qs || 0),
-0
-)
-const manualYearSales = statAdjustments.reduce(
-(sum, item) => sum + Number(item.sales || 0),
-0
-)
+
 const manualYearFullDownVolume = statAdjustments.reduce(
 (sum, item) => sum + Number(item.current_fulldown_volume || 0),
 0
@@ -296,6 +306,17 @@ sales
 .map((sale) => sale.client_id)
 )
 ].length
+
+const manualYearQs = statAdjustments.reduce(
+(sum, item) => sum + Number(item.qs || 0),
+0
+)
+
+const manualYearSales = statAdjustments.reduce(
+(sum, item) => sum + Number(item.sales || 0),
+0
+)
+
 const adjustedYearTourCount = yearTourCount + manualYearQs
 const adjustedYearSaleCount = yearSaleCount + manualYearSales
 const yearClosingPercentage =
@@ -344,9 +365,9 @@ const createdMatches =
 created.getFullYear() === year &&
 created.getMonth() === month &&
 created.getDate() === day
-const outMatches =
-sale.pender && sale.out_of_pender_date === selectedString
-if (!createdMatches && !outMatches) return
+// Monthly Volume and calendar sale placement must always follow the original sale created_at.
+// Out of pender date is only informational and must not move volume or sale placement to another month.
+if (!createdMatches) return
 const key = sale.client_id
 const saleContracts = getAllContractsForClient(sale.client_id)
 if (!itemsByClient.has(key)) {
