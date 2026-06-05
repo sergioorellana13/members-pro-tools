@@ -99,10 +99,6 @@ return profile?.role === 'manager' || profile?.role === 'admin'
 const getAssignedVolume = (sale) => {
 const net = getNetVolume(sale)
 
-if (profile?.role === 'manager' || profile?.role === 'admin') {
-return net
-}
-
 const sellers = [
 sale.liner,
 sale.closer,
@@ -113,8 +109,13 @@ if (sellers.length === 1) return net * 0.70
 if (sellers.length === 2) return (net * 0.80) / 2
 if (sellers.length === 3) return (net * 0.80) / 3
 
+if (profile?.role === 'manager' || profile?.role === 'admin') {
+return net
+}
+
 return 0
 }
+
 const getSalesYearRange = () => {
 const fiscalStartYear =
 today.getMonth() === 11 ? today.getFullYear() : today.getFullYear() - 1
