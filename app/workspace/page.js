@@ -98,14 +98,21 @@ return profile?.role === 'manager' || profile?.role === 'admin'
 }
 const getAssignedVolume = (sale) => {
 const net = getNetVolume(sale)
-if (profile?.role === 'manager') {
+
+if (profile?.role === 'manager' || profile?.role === 'admin') {
 return net
 }
-const hasCloser = sale.closer && sale.closer.trim() !== ''
-const hasTriple = sale.triple && sale.triple.trim() !== ''
-if (!hasCloser && !hasTriple) return net * 0.70
-if (hasCloser && !hasTriple) return (net * 0.80) / 2
-if (hasCloser && hasTriple) return (net * 0.80) / 3
+
+const sellers = [
+sale.liner,
+sale.closer,
+sale.triple
+].filter((name) => name && String(name).trim() !== '')
+
+if (sellers.length === 1) return net * 0.70
+if (sellers.length === 2) return (net * 0.80) / 2
+if (sellers.length === 3) return (net * 0.80) / 3
+
 return 0
 }
 const getSalesYearRange = () => {
