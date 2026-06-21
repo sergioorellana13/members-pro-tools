@@ -1137,6 +1137,7 @@ const payload = validContracts.map((contract, index) => ({
 client_id: newClient.id,
 contract_label: index + 1,
 contract_number: contract.contract_number.trim(),
+projection_label: contract.projection_label ||'promissory',
 annual_points: Number(contract.annual_points || 0),
 contract_years: Number(contract.contract_years || 0),
 purchase_date: contract.purchase_date || null,
@@ -1481,9 +1482,6 @@ label="Total Investment"
 value={contract.total_investment}
 onChange={(v) => updateContract(index, 'total_investment', v)}
 />
-</div>
-</div>
-))}
 
 <div>
 <label style={labelStyle}>
@@ -1500,16 +1498,12 @@ paddingTop: 12
 >
 <input
 type="checkbox"
-checked={
-contract.projection_label === 'maintenance_if_used'
-}
+checked={contract.projection_label === 'maintenance_if_used'}
 onChange={(e) =>
 updateContract(
 index,
 'projection_label',
-e.target.checked
-? 'maintenance_if_used'
-: 'promissory'
+e.target.checked ? 'maintenance_if_used' : 'promissory'
 )
 }
 />
@@ -1520,6 +1514,9 @@ Maintenance Projection If Used
 </div>
 </div>
 
+</div>
+</div>
+))}
 
 
 <div style={footerActions}>
