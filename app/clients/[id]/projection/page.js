@@ -234,6 +234,7 @@ mode: ['avoid-all', 'css', 'legacy']
 .save()
 }
 
+const isMaintenanceProjection = contracts.some(c => c.projection_label === 'maintenance_if_used' )
 
 const ReportCard = ({ isPdf = false }) => (
 <div
@@ -582,7 +583,11 @@ letterSpacing: 1,
 fontSize: isPdf ? 11 : 14
 }}
 >
-Combined Promissory Note Balance
+{
+isMaintenanceProjection
+? 'Maintenance Projection If Used'
+: 'Combined Promissory Note Balance'
+}
 </p>
 
 
@@ -594,6 +599,23 @@ fontSize: isPdf ? 28 : 36
 >
 {money(combinedTotal)}
 </h1>
+
+{
+isMaintenanceProjection && (
+<p
+style={{
+marginTop: 10,
+marginBottom: 0,
+fontSize: isPdf ? 10 : 12,
+color: '#9ca3af',
+textAlign: 'right'
+}}
+>
+Projection assumes full membership utilization through expiration.
+</p>
+)
+}
+
 </div>
 </div>
 )

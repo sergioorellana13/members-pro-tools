@@ -193,6 +193,7 @@ id: null,
 client_id: clientId,
 contract_label: nextLabel,
 contract_number: '',
+projection_label:'promissory',
 annual_points: '',
 contract_years: '',
 purchase_date: '',
@@ -271,6 +272,7 @@ const payload = {
 client_id: clientId,
 contract_label: Number(c.contract_label || 0),
 contract_number: c.contract_number || '',
+projection_label: c.projection_label || 'promissory',
 annual_points: Number(c.annual_points || 0),
 contract_years: Number(c.contract_years || 0),
 purchase_date: c.purchase_date || null,
@@ -454,6 +456,42 @@ label="Use Frequency"
 value={contract.use_frequency || 'annual'}
 onChange={(v) => updateContract(index, 'use_frequency', v.toLowerCase())}
 />
+
+<div>
+<label style={labelStyle}>
+Projection Type
+</label>
+
+<div
+style={{
+display: 'flex',
+alignItems: 'center',
+gap: 10,
+height: 43
+}}
+>
+<input
+type="checkbox"
+checked={
+contract.projection_label ===
+'maintenance_if_used'
+}
+onChange={(e) =>
+updateContract(
+index,
+'projection_label',
+e.target.checked
+? 'maintenance_if_used'
+: 'promissory'
+)
+}
+/>
+
+<span style={{ color: '#f9fafb' }}>
+Maintenance Projection If Used
+</span>
+</div>
+</div>
 
 <Field
 label="Total Years"

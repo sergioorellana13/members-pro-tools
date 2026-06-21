@@ -1485,6 +1485,41 @@ onChange={(v) => updateContract(index, 'total_investment', v)}
 </div>
 ))}
 
+<div>
+<label style={labelStyle}>
+Projection Type
+</label>
+
+<div
+style={{
+display: 'flex',
+alignItems: 'center',
+gap: 10,
+paddingTop: 12
+}}
+>
+<input
+type="checkbox"
+checked={
+contract.projection_label === 'maintenance_if_used'
+}
+onChange={(e) =>
+updateContract(
+index,
+'projection_label',
+e.target.checked
+? 'maintenance_if_used'
+: 'promissory'
+)
+}
+/>
+
+<span style={{ color: '#f9fafb' }}>
+Maintenance Projection If Used
+</span>
+</div>
+</div>
+
 
 
 <div style={footerActions}>
@@ -1603,7 +1638,9 @@ total_investment: '',
 use_frequency:'annual',
 first_use_date:'',
 total_uses: 0,
-remaining_uses: 0
+remaining_uses: 0,
+
+projection_label:'promissory'
 }
 }
 

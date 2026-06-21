@@ -215,6 +215,8 @@ c.use_frequency === 'odd'
 ? 'EVERY OTHER YEAR · EVEN'
 : 'ANNUAL'
 
+const isMaintenanceProjection = c.projection_label === 'maintenance_if_used'
+
 
           const originalPricePerPoint =
             totalPointsPurchased > 0 ? totalPaid / totalPointsPurchased : 0
@@ -242,7 +244,23 @@ Purchase Date: {c.purchase_date || 'N/A'} ·{' '}
                 </div>
 
                 <div style={pointsBadge}>
+<div>
 {numberFormat(annualPoints)} pts · {usageLabel}
+</div>
+
+{isMaintenanceProjection && (
+<div
+style={{
+marginTop: 5,
+fontSize: 10,
+letterSpacing: 1,
+textTransform: 'uppercase',
+color: '#f9fafb'
+}}
+>
+Right to Use Membership
+</div>
+)}
 </div>
               </div>
 
@@ -260,7 +278,7 @@ value={yearsRemaining}
                 <Metric label="Remaining Points" value={numberFormat(remainingPoints)} />
                 <Metric label="Investment to date" value={money(totalPaid)} />
                 <Metric label="Current Maintenance Fee" value={money(maintenanceFee)} />
-                <Metric label="Promissory Note Balance" value={money(promissoryNoteBalance)} />
+                <Metric label={isMaintenanceProjection ? 'Maintenance Projection If Used': 'Promissory Note Balance'} value={money(promissoryNoteBalance)} />
                 <Metric label="Original Price Per Point" value={money(originalPricePerPoint)} />
                 <Metric label="Current Price Per Point" value={money(currentPricePerPoint)} />
               </div>
@@ -336,7 +354,13 @@ contracts.reduce(
 />
 
 <Metric
-label="Estimated Promissory Note Exposure"
+label={
+contracts.some(
+c => c.projection_label === 'maintenance_if_used'
+)
+? 'Maintenance Projection If Used'
+: 'Estimated Promissory Note Exposure'
+}
 value={money(
 contracts.reduce(
 (sum, c) => sum + calculatePromissory(c),
