@@ -255,7 +255,8 @@ next_tier: Number(client.next_tier || 0),
 price_per_point_increase: Number(client.price_per_point_increase || 0),
 benefits_to_add: client.benefits_to_add || '',
 certificate_date: client.certificate_date || null,
-price_freeze_number: Number(client.price_freeze_number || 0.35)
+price_freeze_number: Number(client.price_freeze_number || 0.35),
+pending_certificate_enabled: client.pending_certificate_enabled !== false
 })
 .eq('id', clientId)
 
@@ -492,6 +493,37 @@ Maintenance Projection If Used
 </span>
 </div>
 </div>
+
+<div>
+<label style={labelStyle}>
+Pending Certificate
+</label>
+
+<div
+style={{
+display: 'flex',
+alignItems: 'center',
+gap: 10,
+minHeight: 43
+}}
+>
+<input
+type="checkbox"
+checked={client.pending_certificate_enabled !== false}
+onChange={(e) =>
+updateClient(
+'pending_certificate_enabled',
+e.target.checked
+)
+}
+/>
+
+<span style={{ color: '#f9fafb' }}>
+Show Pending Certificate Button
+</span>
+</div>
+</div>
+
 
 <Field
 label="Total Years"

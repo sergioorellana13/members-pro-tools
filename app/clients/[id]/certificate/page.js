@@ -93,9 +93,9 @@ if (t >= 5000) return '4 Star Elite'
 return 'Member Level'
 }
 
-const newMaintenance = (Number(client?.next_tier) || 0) * 0.525
+const newMaintenance = (Number(client?.next_tier) || 0) * 0.55
 const pricePerPointIncrease = Number(client?.price_per_point_increase || 0)
-const priceFreezeNumber = client?.price_freeze_number ?? 0.35
+const priceFreezeNumber = client?.price_freeze_number ?? 0.32
 
 const generatePDF = async () => {
 const html2pdf = (await import('html2pdf.js')).default

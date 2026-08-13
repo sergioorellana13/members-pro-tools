@@ -737,7 +737,7 @@ normalizeMoneyOcr(maintenanceMatch[1])
 // FALLBACK automatic maintenance calculation
 // DO NOT DELETE
 
-const maintenanceCalc = annualPoints * 0.525
+const maintenanceCalc = annualPoints * 0.55
 
 if (!contract.maintenance_fee) {
 

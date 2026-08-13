@@ -436,12 +436,14 @@ if (insertedSale?.id) {
           </div>
 
           <div style={actions}>
+            {client?.pending_certificate_enabled!==false&& (
             <button
               onClick={() => window.location.href = `/clients/${clientId}/certificate`}
               style={pendingButton}
             >
               Pending Certificate
             </button>
+            )}
 
             <button
   onClick={async () => {
