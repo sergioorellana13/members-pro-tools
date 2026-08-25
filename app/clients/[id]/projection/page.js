@@ -93,7 +93,7 @@ return 'Enter Annual Points'
 const generateProjection = (contract) => {
 const years = Number(contract.years_remaining) || 0
 const increase = Number(contract.annual_maintenance_increase) || 0
-const base = (Number(contract.annual_points) || 0) * 0.525
+const annualPoints = Number(contract.annual_points) || 0
 
 const usageType = String(contract.use_frequency || 'annual').toLowerCase()
 
@@ -105,7 +105,18 @@ for (let i = 0; i < years; i++) {
 
 const year = currentYear + i
 
-const value = base * Math.pow(1 + increase / 100, i)
+let value = 0
+
+if (year <= 2026) {
+value = annualPoints * 0.525
+} else {
+const base2027 = annualPoints * 0.55
+const yearsAfter2027 = year - 2027
+
+value =
+base2027 *
+Math.pow(1 + increase / 100, yearsAfter2027)
+}
 
 if (usageType === 'annual') {
 rows.push({ year, value })
@@ -147,18 +158,33 @@ const searchProjectionText = searchIsRightToUseLevel
 
 
 const generateComparisonProjection = () => {
-const base = Number(searchAnnualPoints || 0) * 0.525
+const annualPoints = Number(searchAnnualPoints || 0)
 const increase = searchProjectionIncrease
 const years = searchProjectionYears
+
 let rows = []
 
+const currentYear = new Date().getFullYear()
 
 for (let i = 0; i < years; i++) {
-const year = new Date().getFullYear() + i
-const value = base * Math.pow(1 + increase / 100, i)
-rows.push({ year, value })
+
+const year = currentYear + i
+
+let value = 0
+
+if (year <= 2026) {
+value = annualPoints * 0.525
+} else {
+const base2027 = annualPoints * 0.55
+const yearsAfter2027 = year - 2027
+
+value =
+base2027 *
+Math.pow(1 + increase / 100, yearsAfter2027)
 }
 
+rows.push({ year, value })
+}
 
 return rows
 }
